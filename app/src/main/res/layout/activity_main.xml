@@ -17,26 +17,16 @@
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- 정렬 버튼 추가 -->
+    <!-- 시선 보정 버튼 -->
     <Button
-        android:id="@+id/btn_alignment"
+        android:id="@+id/btn_calibration"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="정렬"
+        android:text="시선 보정"
         android:textSize="16sp"
         android:padding="12dp"
         android:backgroundTint="#4CAF50"
         android:textColor="@android:color/white" />
-
-    <!-- 정밀 캘리브레이션 버튼 -->
-    <Button
-        android:id="@+id/btn_start_calibration"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="정밀 보정"
-        android:textSize="16sp"
-        android:padding="12dp"
-        android:layout_marginTop="8dp" />
 
     <!-- 설정 버튼 -->
     <Button
@@ -46,9 +36,21 @@
         android:text="설정"
         android:layout_marginTop="8dp" />
 
+    <!-- 🆕 앱 종료 버튼 추가 -->
+    <Button
+        android:id="@+id/btn_exit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="앱 종료"
+        android:textSize="14sp"
+        android:padding="10dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#f44336"
+        android:textColor="@android:color/white" />
+
   </LinearLayout>
 
-  <!-- 상태 텍스트 추가 -->
+  <!-- 상태 텍스트 -->
   <TextView
       android:id="@+id/text_status"
       android:layout_width="wrap_content"
@@ -60,7 +62,7 @@
       app:layout_constraintTop_toTopOf="parent"
       app:layout_constraintStart_toStartOf="parent" />
 
-  <!-- 프로그레스 바 추가 -->
+  <!-- 프로그레스 바 -->
   <ProgressBar
       android:id="@+id/progress_bar"
       android:layout_width="wrap_content"

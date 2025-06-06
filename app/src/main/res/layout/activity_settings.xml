@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -12,178 +11,152 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- 🎯 개선된 캘리브레이션 전략 설정 섹션 -->
+        <!-- 📋 SECTION 1: 기본 설정 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🎯 캘리브레이션 전략 (중요)"
+            android:text="기본 설정"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="#2E7D32"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⚠️ 중요: 정밀 모드를 권장합니다. 빠른 시작은 정확도가 낮을 수 있습니다."
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:textColor="#D32F2F"
-            android:background="#FFEBEE"
-            android:padding="8dp"
-            android:layout_marginBottom="12dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="사용 목적과 정확도 요구사항에 맞는 보정 방식을 선택하세요"
-            android:textSize="12sp"
-            android:textStyle="italic"
-            android:textColor="#666666"
-            android:layout_marginBottom="12dp"/>
-
-        <!-- 캘리브레이션 전략 라디오 그룹 -->
-        <RadioGroup
-            android:id="@+id/radio_group_calibration_strategy"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp">
-
-            <RadioButton
-                android:id="@+id/radio_quick_start"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="⚠️ 빠른 시작 (정확도 주의)"
-                android:textColor="#FF6F00"
-                android:layout_marginBottom="4dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_balanced_cal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="⚖️ 균형 (표준)"
-                android:textColor="#1976D2"
-                android:layout_marginBottom="4dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_precision"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🎯 정밀 (적극 권장)"
-                android:textColor="#2E7D32"
-                android:textStyle="bold"
-                android:layout_marginBottom="4dp"/>
-
-        </RadioGroup>
-
-        <!-- 전략 설명 텍스트 -->
-        <TextView
-            android:id="@+id/text_strategy_description"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="정밀: 5포인트 정밀 보정으로 가장 정확하고 안정적인 시선 추적을 제공합니다."
-            android:textSize="12sp"
-            android:textColor="#666666"
-            android:layout_marginBottom="12dp"
-            android:background="#F0F7FF"
-            android:padding="8dp"/>
-
-        <!-- 개선된 백그라운드 학습 스위치 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⚠️ 주의: 백그라운드 학습이 잘못된 패턴을 학습할 수 있습니다"
-            android:textSize="11sp"
-            android:textColor="#D32F2F"
-            android:textStyle="italic"
-            android:layout_marginBottom="4dp"/>
-
-        <Switch
-            android:id="@+id/switch_background_learning"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🧠 백그라운드 학습 (정밀 보정 후에만 권장)"
-            android:textSize="14sp"
+            android:textColor="#1976D2"
             android:layout_marginBottom="16dp"/>
 
-        <!-- 기존 캘리브레이션 설정들 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="기본 캘리브레이션 설정"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
+        <!-- 앱 시작 시 자동 보정 -->
         <Switch
             android:id="@+id/switch_auto_one_point_calibration"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="앱 시작 시 자동 보정 (권장)"
+            android:text="앱 시작 시 자동 보정"
             android:layout_marginBottom="16dp"/>
 
-        <!-- 개선된 커서 위치 미세 조정 섹션 -->
+        <!-- 사용하며 자동 학습 -->
+        <Switch
+            android:id="@+id/switch_background_learning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="사용하며 자동 학습"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- 📋 SECTION 2: 클릭 속도 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="커서 위치 미세 조정"
+            android:text="클릭 속도"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
+            android:textColor="#1976D2"
+            android:layout_marginBottom="8dp"/>
 
+        <RadioGroup
+            android:id="@+id/radio_group_click_timing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+
+            <RadioButton
+                android:id="@+id/radio_click_normal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="표준 (1초)"
+                android:layout_marginBottom="4dp"/>
+
+            <RadioButton
+                android:id="@+id/radio_click_slow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="느림 (1.5초)"
+                android:layout_marginBottom="4dp"/>
+
+        </RadioGroup>
+
+        <!-- 📋 SECTION 3: 커서 움직임 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="💡 중요 안내: 정밀 보정을 먼저 실행한 후 미세한 차이만 조정하세요"
-            android:textSize="12sp"
+            android:text="커서 움직임"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="#1976D2"
-            android:background="#E3F2FD"
-            android:padding="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/radio_group_performance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+
+            <RadioButton
+                android:id="@+id/radio_performance_stability"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="부드럽게\n약간 느리지만 커서가 매우 부드럽게 움직여요"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioButton
+                android:id="@+id/radio_performance_balanced"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="적당히\n부드러움과 빠른 반응의 적절한 균형"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioButton
+                android:id="@+id/radio_performance_responsive"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="빠르게\n더 빠르지만 커서가 약간 떨릴 수 있어요"
+                android:layout_marginBottom="4dp"/>
+
+        </RadioGroup>
+
+        <!-- 📋 SECTION 4: 커서 위치 조정 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="커서 위치 조정"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#1976D2"
             android:layout_marginBottom="8dp"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="⚠️ 주의: 큰 차이는 오프셋으로 해결하지 말고 재보정하세요 (±10px 이내 권장)"
-            android:textSize="11sp"
-            android:textStyle="italic"
-            android:textColor="#FF6F00"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="커서 좌우 위치 (← 왼쪽 | 오른쪽 →)"
+            android:text="좌우"
             android:layout_marginBottom="4dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="12dp">
 
             <SeekBar
                 android:id="@+id/seekbar_cursor_offset_x"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:max="100"
-                android:progress="50"/>
+                android:progress="50"
+                android:thumbTint="#1976D2"
+                android:progressTint="#1976D2"
+                android:progressBackgroundTint="#E0E0E0"
+                android:minHeight="48dp"/>
 
             <TextView
                 android:id="@+id/text_cursor_offset_x"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0 px"
+                android:text="0"
                 android:layout_marginStart="8dp"
-                android:minWidth="60dp"/>
+                android:minWidth="40dp"
+                android:gravity="center"
+                android:layout_gravity="center_vertical"/>
         </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="커서 상하 위치 (↑ 위쪽 | 아래쪽 ↓)"
+            android:text="상하"
             android:layout_marginBottom="4dp"/>
 
         <LinearLayout
@@ -195,460 +168,59 @@
             <SeekBar
                 android:id="@+id/seekbar_cursor_offset_y"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:max="100"
-                android:progress="50"/>
+                android:progress="50"
+                android:thumbTint="#1976D2"
+                android:progressTint="#1976D2"
+                android:progressBackgroundTint="#E0E0E0"
+                android:minHeight="48dp"/>
 
             <TextView
                 android:id="@+id/text_cursor_offset_y"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0 px"
+                android:text="0"
                 android:layout_marginStart="8dp"
-                android:minWidth="60dp"/>
+                android:minWidth="40dp"
+                android:gravity="center"
+                android:layout_gravity="center_vertical"/>
         </LinearLayout>
 
-        <!-- OneEuroFilter 프리셋 설정 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="시선 추적 필터 설정"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="💡 시선 추적의 부드러움과 반응성을 조절합니다. 균형 모드 권장."
-            android:textSize="12sp"
-            android:textStyle="italic"
-            android:textColor="#666666"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- 프리셋 선택 라디오 그룹 -->
-        <RadioGroup
-            android:id="@+id/radio_group_filter_preset"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-
-            <RadioButton
-                android:id="@+id/radio_stability"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🛡️ 안정성 우선"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   매우 부드럽고 안정적, 떨림 최소화"
-                android:textSize="12sp"
-                android:textColor="#666666"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_balanced_stability"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🔍 균형-안정성"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   안정성을 조금 더 중시"
-                android:textSize="12sp"
-                android:textColor="#666666"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_balanced"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="⚖️ 균형 (권장)"
-                android:textStyle="bold"
-                android:textColor="#2E7D32"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   ✅ 안정성과 반응성의 최적 균형"
-                android:textSize="12sp"
-                android:textColor="#2E7D32"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_balanced_responsive"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🔸 균형-반응성"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   반응성을 조금 더 중시"
-                android:textSize="12sp"
-                android:textColor="#666666"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_responsive"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="⚡ 반응성 우선"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   빠른 반응, 약간의 떨림 허용"
-                android:textSize="12sp"
-                android:textColor="#666666"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioButton
-                android:id="@+id/radio_custom"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🔧 커스텀 (고급 사용자용)"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="   ⚠️ 고급 사용자만 직접 설정"
-                android:textSize="12sp"
-                android:textColor="#FF6F00"
-                android:layout_marginBottom="8dp"/>
-
-        </RadioGroup>
-
-        <!-- 커스텀 필터 설정 (커스텀 모드일 때만 표시) -->
-        <LinearLayout
-            android:id="@+id/layout_custom_filter"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#E0E0E0"
-                android:layout_marginBottom="16dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="⚠️ 고급 설정: 잘못 설정하면 시선 추적이 불안정해질 수 있습니다"
-                android:textSize="12sp"
-                android:textColor="#D32F2F"
-                android:textStyle="bold"
-                android:background="#FFEBEE"
-                android:padding="8dp"
-                android:layout_marginBottom="12dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="커스텀 필터 파라미터"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="업데이트 빈도 (Frequency)"
-                android:layout_marginBottom="4dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <SeekBar
-                    android:id="@+id/seekbar_one_euro_freq"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:max="90"
-                    android:progress="20"/>
-
-                <TextView
-                    android:id="@+id/text_one_euro_freq"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="30.0 Hz"
-                    android:layout_marginStart="8dp"
-                    android:minWidth="70dp"/>
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="최소 차단 주파수 (낮을수록 부드러움)"
-                android:layout_marginBottom="4dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <SeekBar
-                    android:id="@+id/seekbar_one_euro_min_cutoff"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:max="50"
-                    android:progress="10"/>
-
-                <TextView
-                    android:id="@+id/text_one_euro_min_cutoff"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="1.0"
-                    android:layout_marginStart="8dp"
-                    android:minWidth="70dp"/>
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="속도 감도 (높을수록 빠른 움직임에 반응)"
-                android:layout_marginBottom="4dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <SeekBar
-                    android:id="@+id/seekbar_one_euro_beta"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:max="50"
-                    android:progress="7"/>
-
-                <TextView
-                    android:id="@+id/text_one_euro_beta"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0.007"
-                    android:layout_marginStart="8dp"
-                    android:minWidth="70dp"/>
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="미분 차단 주파수"
-                android:layout_marginBottom="4dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="16dp">
-
-                <SeekBar
-                    android:id="@+id/seekbar_one_euro_d_cutoff"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:max="50"
-                    android:progress="10"/>
-
-                <TextView
-                    android:id="@+id/text_one_euro_d_cutoff"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="1.0"
-                    android:layout_marginStart="8dp"
-                    android:minWidth="70dp"/>
-            </LinearLayout>
-
-        </LinearLayout>
-
-        <!-- 기존 설정들 계속 (나머지는 동일) -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="기능 설정"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <Switch
-            android:id="@+id/switch_click_enabled"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="✅ 시선 고정 클릭 활성화"
-            android:layout_marginBottom="8dp"/>
-
-        <Switch
-            android:id="@+id/switch_scroll_enabled"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📜 시선 스크롤 활성화"
-            android:layout_marginBottom="8dp"/>
-
-        <Switch
-            android:id="@+id/switch_edge_scroll_enabled"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="↕️ 화면 가장자리 스크롤 활성화"
-            android:layout_marginStart="20dp"
-            android:layout_marginBottom="8dp"/>
-
-        <Switch
-            android:id="@+id/switch_blink_detection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="👁️ 눈 깜빡임 감지"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- 나머지 설정들은 기존과 동일... -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="클릭 설정"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="고정 클릭 시간"
-            android:layout_marginBottom="4dp"/>
-
+        <!-- 🆕 커서 위치 조정 버튼들 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="24dp">
 
-            <SeekBar
-                android:id="@+id/seekbar_fixation_duration"
+            <Button
+                android:id="@+id/btn_reset_cursor_offset"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:max="30"
-                android:progress="7"/>
+                android:text="위치 초기화"
+                android:textSize="16sp"
+                android:layout_marginEnd="8dp"
+                style="@style/Widget.Material3.Button.OutlinedButton"/>
 
-            <TextView
-                android:id="@+id/text_fixation_duration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="1.0초"
-                android:layout_marginStart="8dp"
-                android:minWidth="60dp"/>
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="고정 인식 영역 반지름"
-            android:layout_marginBottom="4dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <SeekBar
-                android:id="@+id/seekbar_aoi_radius"
+            <Button
+                android:id="@+id/btn_precision_calibration"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:max="60"
-                android:progress="30"/>
-
-            <TextView
-                android:id="@+id/text_aoi_radius"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="40 픽셀"
+                android:text="정밀 보정"
+                android:textSize="16sp"
                 android:layout_marginStart="8dp"
-                android:minWidth="60dp"/>
+                style="@style/Widget.Material3.Button"/>
+
         </LinearLayout>
 
-        <TextView
+        <!-- 📋 추가 여백 -->
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="스크롤 설정"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="가장자리 스크롤 시간"
-            android:layout_marginBottom="4dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <SeekBar
-                android:id="@+id/seekbar_edge_trigger_time"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:max="40"
-                android:progress="20"/>
-
-            <TextView
-                android:id="@+id/text_edge_trigger_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3.0초"
-                android:layout_marginStart="8dp"
-                android:minWidth="60dp"/>
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="연속 스크롤 횟수"
-            android:layout_marginBottom="4dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <SeekBar
-                android:id="@+id/seekbar_scroll_count"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:max="4"
-                android:progress="1"/>
-
-            <TextView
-                android:id="@+id/text_scroll_count"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2회"
-                android:layout_marginStart="8dp"
-                android:minWidth="60dp"/>
-        </LinearLayout>
+            android:layout_height="32dp"/>
 
     </LinearLayout>
 </ScrollView>
