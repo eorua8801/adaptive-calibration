@@ -32,6 +32,7 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
     // 새로운 키들 추가
     private static final String KEY_CALIBRATION_STRATEGY = "calibration_strategy";
     private static final String KEY_BACKGROUND_LEARNING = "background_learning";
+    private static final String KEY_CLICK_TIMING = "click_timing";
 
     private final SharedPreferences prefs;
 
@@ -51,9 +52,18 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
             strategy = UserSettings.CalibrationStrategy.PRECISION; // 안전한 기본값으로 변경
         }
 
-        // OneEuroFilter 프리셋 로드 (기존 코드)
-        String presetName = prefs.getString(KEY_ONE_EURO_PRESET, OneEuroFilterPreset.BALANCED.name());
+        // OneEuroFilter 프리셋 로드 - BALANCED_STABILITY를 기본값으로 사용
+        String presetName = prefs.getString(KEY_ONE_EURO_PRESET, OneEuroFilterPreset.BALANCED_STABILITY.name());
         OneEuroFilterPreset preset = OneEuroFilterPreset.fromName(presetName);
+
+        // 클릭 타이밍 로드
+        String clickTimingName = prefs.getString(KEY_CLICK_TIMING, UserSettings.ClickTiming.NORMAL.name());
+        UserSettings.ClickTiming clickTiming;
+        try {
+            clickTiming = UserSettings.ClickTiming.valueOf(clickTimingName);
+        } catch (IllegalArgumentException e) {
+            clickTiming = UserSettings.ClickTiming.NORMAL;
+        }
 
         return new UserSettings.Builder()
                 .fixationDurationMs(prefs.getFloat(KEY_FIXATION_DURATION, 1000f))
@@ -76,6 +86,7 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
                 // 🎯 새 설정들 추가 (안전한 기본값)
                 .calibrationStrategy(strategy)
                 .backgroundLearningEnabled(prefs.getBoolean(KEY_BACKGROUND_LEARNING, false)) // 기본값 false로 변경
+                .clickTiming(clickTiming)
                 .build();
     }
 
@@ -107,6 +118,7 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
         // 새 설정들 저장
         editor.putString(KEY_CALIBRATION_STRATEGY, settings.getCalibrationStrategy().name());
         editor.putBoolean(KEY_BACKGROUND_LEARNING, settings.isBackgroundLearningEnabled());
+        editor.putString(KEY_CLICK_TIMING, settings.getClickTiming().name());
 
         editor.apply();
     }
@@ -117,6 +129,8 @@ public class SharedPrefsSettingsRepository implements SettingsRepository {
         saveUserSettings(new UserSettings.Builder()
                 .calibrationStrategy(UserSettings.CalibrationStrategy.PRECISION)
                 .backgroundLearningEnabled(false)
+                .clickTiming(UserSettings.ClickTiming.NORMAL)
+                .oneEuroFilterPreset(OneEuroFilterPreset.BALANCED_STABILITY)
                 .build());
     }
 
