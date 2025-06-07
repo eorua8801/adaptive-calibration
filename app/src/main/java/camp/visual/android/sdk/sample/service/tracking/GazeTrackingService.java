@@ -27,9 +27,11 @@ import camp.visual.android.sdk.sample.data.repository.EyeTrackingRepository;
 import camp.visual.android.sdk.sample.data.repository.EyedidTrackingRepository;
 import camp.visual.android.sdk.sample.data.settings.SettingsRepository;
 import camp.visual.android.sdk.sample.data.settings.SharedPrefsSettingsRepository;
+import camp.visual.android.sdk.sample.domain.filter.EnhancedOneEuroFilterManager;
 import camp.visual.android.sdk.sample.domain.interaction.ClickDetector;
 import camp.visual.android.sdk.sample.domain.interaction.EdgeScrollDetector;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
+import camp.visual.android.sdk.sample.domain.performance.PerformanceMonitor;
 import camp.visual.android.sdk.sample.service.accessibility.MyAccessibilityService;
 import camp.visual.android.sdk.sample.ui.main.MainActivity;
 import camp.visual.android.sdk.sample.ui.views.CalibrationViewer;
@@ -37,31 +39,35 @@ import camp.visual.android.sdk.sample.ui.views.OverlayCursorView;
 import camp.visual.eyedid.gazetracker.callback.CalibrationCallback;
 import camp.visual.eyedid.gazetracker.callback.TrackingCallback;
 import camp.visual.eyedid.gazetracker.constant.CalibrationModeType;
-import camp.visual.eyedid.gazetracker.filter.OneEuroFilterManager;
 import camp.visual.eyedid.gazetracker.metrics.BlinkInfo;
 import camp.visual.eyedid.gazetracker.metrics.FaceInfo;
 import camp.visual.eyedid.gazetracker.metrics.GazeInfo;
 import camp.visual.eyedid.gazetracker.metrics.UserStatusInfo;
 import camp.visual.eyedid.gazetracker.metrics.state.TrackingState;
 
-public class GazeTrackingService extends Service {
+public class GazeTrackingService extends Service implements PerformanceMonitor.PerformanceCallback {
 
     private static final String TAG = "GazeTrackingService";
     private static final String CHANNEL_ID = "GazeTrackingServiceChannel";
 
     // 컴포넌트
-    private EyeTrackingRepository trackingRepository;
+    private EyedidTrackingRepository trackingRepository;
     private SettingsRepository settingsRepository;
     private UserSettings userSettings;
     private ClickDetector clickDetector;
     private EdgeScrollDetector edgeScrollDetector;
+
+    // 🆕 향상된 필터링 시스템
+    private EnhancedOneEuroFilterManager enhancedFilterManager;
+
+    // 🆕 성능 모니터링 시스템
+    private PerformanceMonitor performanceMonitor;
 
     // 시스템 서비스 및 UI
     private WindowManager windowManager;
     private OverlayCursorView overlayCursorView;
     private CalibrationViewer calibrationViewer;
     private Vibrator vibrator;
-    private OneEuroFilterManager oneEuroFilterManager;
     private Handler handler = new Handler(Looper.getMainLooper());
 
     // 상태 변수
@@ -70,6 +76,11 @@ public class GazeTrackingService extends Service {
     private static final long SCROLL_COOLDOWN = 1500;
     private boolean isCalibrating = false;
     private boolean skipProgress = false;
+
+    // 🆕 성능 최적화 상태
+    private boolean performanceOptimizationEnabled = true;
+    private long lastPerformanceCheck = 0;
+    private static final long PERFORMANCE_CHECK_INTERVAL = 10000; // 10초마다 체크
 
     // 서비스 인스턴스
     private static GazeTrackingService instance;
@@ -84,6 +95,7 @@ public class GazeTrackingService extends Service {
         createNotificationChannel();
         initSystemServices();
         initViews();
+        initPerformanceMonitoring();
         initGazeTracker();
 
         checkAccessibilityService();
@@ -99,15 +111,27 @@ public class GazeTrackingService extends Service {
         clickDetector = new ClickDetector(userSettings);
         edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
 
-        oneEuroFilterManager = new OneEuroFilterManager(
-                2,
-                (float) userSettings.getOneEuroFreq(),
-                (float) userSettings.getOneEuroMinCutoff(),
-                (float) userSettings.getOneEuroBeta(),
-                (float) userSettings.getOneEuroDCutoff()
+        // 🆕 향상된 OneEuroFilter 초기화
+        enhancedFilterManager = new EnhancedOneEuroFilterManager(
+                userSettings.getOneEuroFreq(),
+                userSettings.getOneEuroMinCutoff(),
+                userSettings.getOneEuroBeta(),
+                userSettings.getOneEuroDCutoff()
         );
 
-        Log.d(TAG, "OneEuroFilter 초기화 - 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
+        Log.d(TAG, "향상된 OneEuroFilter 초기화 - 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
+        Log.d(TAG, "안경 보정 기능: " + (enhancedFilterManager.isGlassesCompensationEnabled() ? "활성화" : "비활성화"));
+    }
+
+    // 🆕 성능 모니터링 초기화
+    private void initPerformanceMonitoring() {
+        performanceMonitor = new PerformanceMonitor(this);
+        performanceMonitor.setCallback(this);
+
+        if (performanceOptimizationEnabled) {
+            performanceMonitor.startMonitoring();
+            Log.d(TAG, "성능 모니터링 시작");
+        }
     }
 
     private void initSystemServices() {
@@ -162,7 +186,7 @@ public class GazeTrackingService extends Service {
                 trackingRepository.setTrackingCallback(trackingCallback);
                 trackingRepository.setCalibrationCallback(calibrationCallback);
                 trackingRepository.startTracking();
-                Log.d(TAG, "GazeTracker 초기화 성공");
+                Log.d(TAG, "GazeTracker 초기화 성공 (HIGH 정확도 모드)");
 
                 // 자동 보정 시작
                 if (userSettings.isAutoOnePointCalibrationEnabled() && !isCalibrating) {
@@ -175,7 +199,6 @@ public class GazeTrackingService extends Service {
         });
     }
 
-    // 단순화된 자동 보정 (5포인트만)
     private void startAutoCalibration() {
         Log.d(TAG, "자동 보정 시작");
         Toast.makeText(this, "시선 보정 시작", Toast.LENGTH_SHORT).show();
@@ -185,7 +208,6 @@ public class GazeTrackingService extends Service {
         }, 1000);
     }
 
-    // 5포인트 캘리브레이션 시작
     private void startCalibration() {
         if (trackingRepository == null || trackingRepository.getTracker() == null) {
             Log.e(TAG, "trackingRepository 또는 tracker가 null입니다");
@@ -207,7 +229,6 @@ public class GazeTrackingService extends Service {
         }
     }
 
-    // 상태 초기화
     private void resetCalibrationState() {
         isCalibrating = false;
         calibrationViewer.setVisibility(View.INVISIBLE);
@@ -222,17 +243,31 @@ public class GazeTrackingService extends Service {
             float screenHeight = dm.heightPixels;
 
             if (gazeInfo.trackingState == TrackingState.SUCCESS) {
-                // 필터링 적용
+                // 🆕 향상된 필터링 시스템 사용
                 float filteredX, filteredY;
                 long filterTime = android.os.SystemClock.elapsedRealtime();
 
-                if (oneEuroFilterManager.filterValues(filterTime, gazeInfo.x, gazeInfo.y)) {
-                    float[] filtered = oneEuroFilterManager.getFilteredValues();
+                // fixationX/Y 데이터도 함께 활용하여 필터링
+                if (enhancedFilterManager.filterValues(filterTime, gazeInfo.x, gazeInfo.y,
+                        gazeInfo.fixationX, gazeInfo.fixationY, gazeInfo.trackingState)) {
+                    float[] filtered = enhancedFilterManager.getFilteredValues();
                     filteredX = filtered[0];
                     filteredY = filtered[1];
+
+                    // 필터 상태 로깅 (디버깅용)
+                    if (timestamp % 1000 == 0) { // 1초마다 한 번씩만
+                        Log.v(TAG, "필터 상태: " + enhancedFilterManager.getCurrentFilterInfo());
+                    }
                 } else {
-                    filteredX = gazeInfo.x;
-                    filteredY = gazeInfo.y;
+                    // 🆕 TrackingState 기반 폴백 처리
+                    if (enhancedFilterManager.filterValues(filterTime, gazeInfo.x, gazeInfo.y)) {
+                        float[] filtered = enhancedFilterManager.getFilteredValues();
+                        filteredX = filtered[0];
+                        filteredY = filtered[1];
+                    } else {
+                        filteredX = gazeInfo.x;
+                        filteredY = gazeInfo.y;
+                    }
                 }
 
                 // 오프셋 적용
@@ -280,11 +315,70 @@ public class GazeTrackingService extends Service {
                     }
                 }
             }
+
+            // 🆕 성능 기반 FPS 조정 (주기적으로)
+            checkAndAdjustPerformance();
         }
 
         @Override
-        public void onDrop(long timestamp) {}
+        public void onDrop(long timestamp) {
+            // 🆕 프레임 드롭 감지 시 성능 조정
+            Log.w(TAG, "프레임 드롭 감지: " + timestamp);
+            if (performanceOptimizationEnabled && performanceMonitor != null) {
+                handler.post(() -> {
+                    PerformanceMonitor.PerformanceMetrics metrics = performanceMonitor.getCurrentMetrics();
+                    trackingRepository.adjustFPSBasedOnPerformance(
+                            metrics.batteryLevel, metrics.cpuUsage, metrics.availableMemoryMB
+                    );
+                });
+            }
+        }
     };
+
+    // 🆕 성능 체크 및 조정
+    private void checkAndAdjustPerformance() {
+        long currentTime = System.currentTimeMillis();
+        if (performanceOptimizationEnabled && performanceMonitor != null &&
+                currentTime - lastPerformanceCheck > PERFORMANCE_CHECK_INTERVAL) {
+
+            lastPerformanceCheck = currentTime;
+
+            PerformanceMonitor.PerformanceMetrics metrics = performanceMonitor.getCurrentMetrics();
+            trackingRepository.adjustFPSBasedOnPerformance(
+                    metrics.batteryLevel, metrics.cpuUsage, metrics.availableMemoryMB
+            );
+        }
+    }
+
+    // 🆕 PerformanceMonitor.PerformanceCallback 구현
+    @Override
+    public void onPerformanceChanged(PerformanceMonitor.PerformanceMetrics metrics) {
+        if (performanceOptimizationEnabled) {
+            trackingRepository.adjustFPSBasedOnPerformance(
+                    metrics.batteryLevel, metrics.cpuUsage, metrics.availableMemoryMB
+            );
+        }
+    }
+
+    @Override
+    public void onPerformanceAlert(PerformanceMonitor.AlertType alertType, PerformanceMonitor.PerformanceMetrics metrics) {
+        String alertMessage = "";
+        switch (alertType) {
+            case BATTERY_CRITICAL:
+                alertMessage = "배터리 부족! 성능 최적화 모드 활성화";
+                break;
+            case CPU_CRITICAL:
+                alertMessage = "CPU 과부하! FPS 자동 조정 중";
+                break;
+            case MEMORY_CRITICAL:
+                alertMessage = "메모리 부족! 성능 조정 중";
+                break;
+        }
+
+        if (!alertMessage.isEmpty()) {
+            Log.w(TAG, "성능 알림: " + alertMessage + " - " + metrics.toString());
+        }
+    }
 
     private void resetAll() {
         edgeScrollDetector.resetAll();
@@ -370,7 +464,7 @@ public class GazeTrackingService extends Service {
         public void onCalibrationFinished(double[] calibrationData) {
             hideCalibrationView();
             isCalibrating = false;
-            Toast.makeText(GazeTrackingService.this, "보정 완료", Toast.LENGTH_SHORT).show();
+            Toast.makeText(GazeTrackingService.this, "보정 완료 (HIGH 정확도)", Toast.LENGTH_SHORT).show();
         }
 
         @Override
@@ -409,9 +503,6 @@ public class GazeTrackingService extends Service {
         });
     }
 
-    /**
-     * 메인 화면에서 캘리브레이션 트리거
-     */
     public void triggerCalibration() {
         Log.d(TAG, "수동 보정 요청");
 
@@ -428,9 +519,6 @@ public class GazeTrackingService extends Service {
         startCalibration();
     }
 
-    /**
-     * MainActivity에서 캘리브레이션을 실행할 수 있도록 하는 메서드
-     */
     public static void triggerMainActivityCalibration() {
         if (MainActivity.getInstance() != null) {
             MainActivity.getInstance().triggerCalibrationFromService();
@@ -439,32 +527,76 @@ public class GazeTrackingService extends Service {
         }
     }
 
-    /**
-     * 현재 서비스 인스턴스를 반환
-     */
     public static GazeTrackingService getInstance() {
         return instance;
     }
 
-    /**
-     * 사용자 설정을 새로고침하는 메서드
-     */
     public void refreshSettings() {
         userSettings = settingsRepository.getUserSettings();
         clickDetector = new ClickDetector(userSettings);
         edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
 
-        oneEuroFilterManager = new OneEuroFilterManager(
-                2,
-                (float) userSettings.getOneEuroFreq(),
-                (float) userSettings.getOneEuroMinCutoff(),
-                (float) userSettings.getOneEuroBeta(),
-                (float) userSettings.getOneEuroDCutoff()
+        // 🆕 향상된 필터 매니저 재초기화
+        enhancedFilterManager = new EnhancedOneEuroFilterManager(
+                userSettings.getOneEuroFreq(),
+                userSettings.getOneEuroMinCutoff(),
+                userSettings.getOneEuroBeta(),
+                userSettings.getOneEuroDCutoff()
         );
 
         Log.d(TAG, "사용자 설정이 새로고침되었습니다");
         Log.d(TAG, "현재 커서 오프셋: X=" + userSettings.getCursorOffsetX() + ", Y=" + userSettings.getCursorOffsetY());
         Log.d(TAG, "현재 OneEuroFilter 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
+        Log.d(TAG, "향상된 필터 상태: " + enhancedFilterManager.getCurrentFilterInfo());
+    }
+
+    // 🆕 성능 최적화 설정 메서드들
+    public void setPerformanceOptimizationEnabled(boolean enabled) {
+        performanceOptimizationEnabled = enabled;
+
+        if (performanceMonitor != null) {
+            if (enabled && !performanceMonitor.isMonitoring()) {
+                performanceMonitor.startMonitoring();
+                Log.d(TAG, "성능 최적화 활성화");
+            } else if (!enabled && performanceMonitor.isMonitoring()) {
+                performanceMonitor.stopMonitoring();
+                Log.d(TAG, "성능 최적화 비활성화");
+            }
+        }
+    }
+
+    public boolean isPerformanceOptimizationEnabled() {
+        return performanceOptimizationEnabled;
+    }
+
+    // 🆕 안경 보정 기능 설정
+    public void setGlassesCompensationEnabled(boolean enabled) {
+        if (enhancedFilterManager != null) {
+            enhancedFilterManager.setGlassesCompensationEnabled(enabled);
+            Log.d(TAG, "안경 보정 기능 " + (enabled ? "활성화" : "비활성화"));
+        }
+    }
+
+    public boolean isGlassesCompensationEnabled() {
+        return enhancedFilterManager != null && enhancedFilterManager.isGlassesCompensationEnabled();
+    }
+
+    // 🆕 현재 성능 상태 조회
+    public PerformanceMonitor.PerformanceMetrics getCurrentPerformanceMetrics() {
+        return performanceMonitor != null ? performanceMonitor.getCurrentMetrics() : null;
+    }
+
+    // 🆕 현재 FPS 조회
+    public int getCurrentFPS() {
+        return trackingRepository != null ? trackingRepository.getCurrentFPS() : 30;
+    }
+
+    // 🆕 수동 FPS 설정
+    public void setManualFPS(int fps) {
+        if (trackingRepository != null) {
+            trackingRepository.setTrackingFPS(fps);
+            Log.d(TAG, "수동 FPS 설정: " + fps);
+        }
     }
 
     private void checkAccessibilityService() {
@@ -477,6 +609,13 @@ public class GazeTrackingService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "서비스 시작됨");
+
+        // 🆕 시작 시 성능 상태 로깅
+        if (performanceMonitor != null) {
+            PerformanceMonitor.PerformanceMetrics metrics = performanceMonitor.getCurrentMetrics();
+            Log.d(TAG, "시작 시 성능 상태: " + metrics.toString());
+        }
+
         return START_STICKY;
     }
 
@@ -484,6 +623,11 @@ public class GazeTrackingService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "서비스 종료됨");
+
+        // 🆕 성능 모니터링 중지
+        if (performanceMonitor != null) {
+            performanceMonitor.stopMonitoring();
+        }
 
         // 뷰 제거
         if (overlayCursorView != null && windowManager != null) {
@@ -504,6 +648,11 @@ public class GazeTrackingService extends Service {
         // 시선 추적 중지
         if (trackingRepository != null && trackingRepository.getTracker() != null) {
             trackingRepository.stopTracking();
+        }
+
+        // 🆕 핸들러 정리
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
         }
 
         instance = null;
