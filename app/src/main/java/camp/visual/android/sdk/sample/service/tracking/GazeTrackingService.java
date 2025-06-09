@@ -36,6 +36,7 @@ import camp.visual.android.sdk.sample.service.accessibility.MyAccessibilityServi
 import camp.visual.android.sdk.sample.ui.main.MainActivity;
 import camp.visual.android.sdk.sample.ui.views.CalibrationViewer;
 import camp.visual.android.sdk.sample.ui.views.OverlayCursorView;
+import camp.visual.android.sdk.sample.ui.views.overlay.EdgeMenuManager;
 import camp.visual.eyedid.gazetracker.callback.CalibrationCallback;
 import camp.visual.eyedid.gazetracker.callback.TrackingCallback;
 import camp.visual.eyedid.gazetracker.constant.CalibrationModeType;
@@ -82,6 +83,9 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     private long lastPerformanceCheck = 0;
     private static final long PERFORMANCE_CHECK_INTERVAL = 10000; // 10초마다 체크
 
+    // 🆕 엣지 메뉴 매니저
+    private EdgeMenuManager edgeMenuManager;
+
     // 서비스 인스턴스
     private static GazeTrackingService instance;
 
@@ -96,6 +100,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
         initSystemServices();
         initViews();
         initPerformanceMonitoring();
+        initEdgeMenuManager(); // 🆕 엣지 메뉴 매니저 초기화
         initGazeTracker();
 
         checkAccessibilityService();
@@ -121,6 +126,12 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
 
         Log.d(TAG, "향상된 OneEuroFilter 초기화 - 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
         Log.d(TAG, "안경 보정 기능: " + (enhancedFilterManager.isGlassesCompensationEnabled() ? "활성화" : "비활성화"));
+    }
+
+    // 🆕 엣지 메뉴 매니저 초기화
+    private void initEdgeMenuManager() {
+        edgeMenuManager = new EdgeMenuManager(this);
+        Log.d(TAG, "엣지 메뉴 매니저 초기화 완료");
     }
 
     // 🆕 성능 모니터링 초기화
@@ -281,8 +292,18 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
                     overlayCursorView.updatePosition(safeX, safeY);
                     lastValidTimestamp = System.currentTimeMillis();
 
-                    // 엣지 스크롤 처리
-                    EdgeScrollDetector.Edge edge = edgeScrollDetector.update(safeY, screenHeight);
+                    // 🆕 메뉴가 열려있으면 메뉴 상호작용 처리
+                    if (edgeMenuManager.isMenuVisible()) {
+                        edgeMenuManager.updateGazePosition(safeX, safeY);
+                        
+                        // 메뉴가 열려있을 때는 엣지 감지로 취소 처리
+                        EdgeScrollDetector.Edge edge = edgeScrollDetector.update(safeX, safeY, screenWidth, screenHeight);
+                        handleMenuCancellation(edge);
+                        return; // 메뉴 상호작용 중에는 다른 상호작용 비활성화
+                    }
+
+                    // 🆕 엣지 스크롤 처리 (좌우 모서리 포함)
+                    EdgeScrollDetector.Edge edge = edgeScrollDetector.update(safeX, safeY, screenWidth, screenHeight);
 
                     if (edge == EdgeScrollDetector.Edge.TOP) {
                         overlayCursorView.setTextPosition(false);
@@ -302,6 +323,54 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
                         if (action == EdgeScrollDetector.ScrollAction.SCROLL_UP) {
                             overlayCursorView.setCursorText("③");
                             scrollUp(userSettings.getContinuousScrollCount());
+                            handler.postDelayed(() -> resetAll(), 500);
+                        }
+                    } else if (edge == EdgeScrollDetector.Edge.LEFT_TOP) {
+                        // 🆕 좌측 상단 엣지 처리 - 네비게이션 메뉴
+                        overlayCursorView.setTextPosition(false);
+                        EdgeScrollDetector.ScrollAction action = edgeScrollDetector.processLeftTopEdge();
+                        overlayCursorView.setCursorText(edgeScrollDetector.getEdgeStateText());
+
+                        if (action == EdgeScrollDetector.ScrollAction.LEFT_TOP_ACTION) {
+                            overlayCursorView.setCursorText("③");
+                            Log.d(TAG, "네비게이션 메뉴 호출!");
+                            edgeMenuManager.showNavigationMenu();
+                            handler.postDelayed(() -> resetAll(), 500);
+                        }
+                    } else if (edge == EdgeScrollDetector.Edge.LEFT_BOTTOM) {
+                        // 🆕 좌측 하단 엣지 처리
+                        overlayCursorView.setTextPosition(false);
+                        EdgeScrollDetector.ScrollAction action = edgeScrollDetector.processLeftBottomEdge();
+                        overlayCursorView.setCursorText(edgeScrollDetector.getEdgeStateText());
+
+                        if (action == EdgeScrollDetector.ScrollAction.LEFT_BOTTOM_ACTION) {
+                            overlayCursorView.setCursorText("③");
+                            // TODO: 좌측 하단 액션 구현 (예: 좌측 스와이프 등)
+                            Log.d(TAG, "좌측 하단 액션 트리거됨!");
+                            handler.postDelayed(() -> resetAll(), 500);
+                        }
+                    } else if (edge == EdgeScrollDetector.Edge.RIGHT_TOP) {
+                        // 🆕 우측 상단 엣지 처리 - 시스템 메뉴
+                        overlayCursorView.setTextPosition(false);
+                        EdgeScrollDetector.ScrollAction action = edgeScrollDetector.processRightTopEdge();
+                        overlayCursorView.setCursorText(edgeScrollDetector.getEdgeStateText());
+
+                        if (action == EdgeScrollDetector.ScrollAction.RIGHT_TOP_ACTION) {
+                            overlayCursorView.setCursorText("③");
+                            Log.d(TAG, "시스템 메뉴 호출!");
+                            edgeMenuManager.showSystemMenu();
+                            handler.postDelayed(() -> resetAll(), 500);
+                        }
+                    } else if (edge == EdgeScrollDetector.Edge.RIGHT_BOTTOM) {
+                        // 🆕 우측 하단 엣지 처리
+                        overlayCursorView.setTextPosition(false);
+                        EdgeScrollDetector.ScrollAction action = edgeScrollDetector.processRightBottomEdge();
+                        overlayCursorView.setCursorText(edgeScrollDetector.getEdgeStateText());
+
+                        if (action == EdgeScrollDetector.ScrollAction.RIGHT_BOTTOM_ACTION) {
+                            overlayCursorView.setCursorText("③");
+                            // TODO: 우측 하단 액션 구현 (예: 우측 스와이프 등)
+                            Log.d(TAG, "우측 하단 액션 트리거됨!");
                             handler.postDelayed(() -> resetAll(), 500);
                         }
                     } else if (!edgeScrollDetector.isActive()) {
@@ -334,6 +403,30 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
             }
         }
     };
+
+    // 🆕 메뉴 취소 처리
+    private void handleMenuCancellation(EdgeScrollDetector.Edge edge) {
+        // 메뉴가 열린 상태에서 같은 모서리를 다시 응시하면 취소 시작
+        if (edge == EdgeScrollDetector.Edge.LEFT_TOP && edgeMenuManager.isNavigationMenuActive()) {
+            if (!edgeMenuManager.isCancelingActive()) {
+                edgeMenuManager.startCanceling();
+                overlayCursorView.setCursorText("삭제");
+            } else {
+                edgeMenuManager.updateCancelProgress();
+            }
+        } else if (edge == EdgeScrollDetector.Edge.RIGHT_TOP && edgeMenuManager.isSystemMenuActive()) {
+            if (!edgeMenuManager.isCancelingActive()) {
+                edgeMenuManager.startCanceling();
+                overlayCursorView.setCursorText("삭제");
+            } else {
+                edgeMenuManager.updateCancelProgress();
+            }
+        } else if (edgeMenuManager.isCancelingActive()) {
+            // 다른 엣지로 이동하면 취소 중단
+            edgeMenuManager.cancelCanceling();
+            overlayCursorView.setCursorText("●");
+        }
+    }
 
     // 🆕 성능 체크 및 조정
     private void checkAndAdjustPerformance() {
@@ -653,6 +746,11 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
         // 🆕 핸들러 정리
         if (handler != null) {
             handler.removeCallbacksAndMessages(null);
+        }
+
+        // 🆕 엣지 메뉴 매니저 정리
+        if (edgeMenuManager != null) {
+            edgeMenuManager.cleanup();
         }
 
         instance = null;
