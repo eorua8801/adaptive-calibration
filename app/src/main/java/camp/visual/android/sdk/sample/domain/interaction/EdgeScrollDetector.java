@@ -17,7 +17,7 @@ public class EdgeScrollDetector {
     }
 
     public enum ScrollAction {
-        SCROLL_UP, SCROLL_DOWN, LEFT_TOP_ACTION, LEFT_BOTTOM_ACTION, RIGHT_TOP_ACTION, RIGHT_BOTTOM_ACTION, NONE
+        SCROLL_UP, SCROLL_DOWN, LEFT_TOP_ACTION, LEFT_BOTTOM_SWIPE_RIGHT, RIGHT_TOP_ACTION, RIGHT_BOTTOM_SWIPE_LEFT, NONE
     }
 
     // 상단 응시 관련 변수
@@ -274,10 +274,10 @@ public class EdgeScrollDetector {
                 }
 
                 if (duration >= settings.getEdgeTriggerMs() && !leftBottomGazeTriggered) {
-                    Log.d(TAG, "좌측 하단 액션 트리거!");
+                    Log.d(TAG, "좌측 하단 스와이프 액션 트리거! (좌→우 스와이프)");
                     leftBottomGazeTriggered = true;
                     vibrator.vibrate(300);
-                    return ScrollAction.LEFT_BOTTOM_ACTION;
+                    return ScrollAction.LEFT_BOTTOM_SWIPE_RIGHT;
                 }
             }
         }
@@ -352,10 +352,10 @@ public class EdgeScrollDetector {
                 }
 
                 if (duration >= settings.getEdgeTriggerMs() && !rightBottomGazeTriggered) {
-                    Log.d(TAG, "우측 하단 액션 트리거!");
+                    Log.d(TAG, "우측 하단 스와이프 액션 트리거! (우→좌 스와이프)");
                     rightBottomGazeTriggered = true;
                     vibrator.vibrate(300);
-                    return ScrollAction.RIGHT_BOTTOM_ACTION;
+                    return ScrollAction.RIGHT_BOTTOM_SWIPE_LEFT;
                 }
             }
         }
@@ -384,7 +384,7 @@ public class EdgeScrollDetector {
         } else if (currentEdge == Edge.LEFT_BOTTOM) {
             if (leftBottomGazeStartTime == 0) return "◣";
             long duration = System.currentTimeMillis() - leftBottomGazeStartTime;
-            if (duration > 2000) return "②";
+            if (duration > 2000) return "➡";
             if (duration > 1000) return "①";
             return "◣";
         } else if (currentEdge == Edge.RIGHT_TOP) {
@@ -396,7 +396,7 @@ public class EdgeScrollDetector {
         } else if (currentEdge == Edge.RIGHT_BOTTOM) {
             if (rightBottomGazeStartTime == 0) return "◢";
             long duration = System.currentTimeMillis() - rightBottomGazeStartTime;
-            if (duration > 2000) return "②";
+            if (duration > 2000) return "⬅";
             if (duration > 1000) return "①";
             return "◢";
         }

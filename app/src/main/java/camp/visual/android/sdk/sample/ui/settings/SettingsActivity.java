@@ -215,6 +215,7 @@ public class SettingsActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("정밀 보정")
                 .setMessage("메인 화면의 시선 보정을 실행하시겠습니까?\n\n" +
+                        "⚠️ 기존 위치 조정값이 초기화되고 새로운 보정을 실행합니다.\n\n" +
                         "설정을 저장한 후 메인 화면으로 이동합니다.")
                 .setPositiveButton("보정 시작", (dialog, which) -> {
                     saveSettings();

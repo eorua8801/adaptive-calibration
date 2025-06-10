@@ -26,6 +26,9 @@ public class MyAccessibilityService extends AccessibilityService {
 
     // 현재 진행 중인 제스처 여부
     private boolean isGestureInProgress = false;
+    
+    // 스와이프 설정
+    private static final float SWIPE_DISTANCE_RATIO = 0.8f; // 화면 넓이의 80%
 
     // 제스처 완료 핸들러
     private Handler gestureHandler = new Handler(Looper.getMainLooper());
@@ -98,7 +101,7 @@ public class MyAccessibilityService extends AccessibilityService {
     }
 
     public enum Direction {
-        UP, DOWN
+        UP, DOWN, LEFT, RIGHT
     }
 
     public enum ScrollAmount {
@@ -200,6 +203,174 @@ public class MyAccessibilityService extends AccessibilityService {
         // 남은 스크롤 예약 (각 스크롤 간 500ms 간격)
         if (count > 1) {
             gestureHandler.postDelayed(() -> performContinuousScroll(direction, count - 1), 500);
+        }
+    }
+
+    /**
+     * 강화된 스와이프 제스처를 수행하는 메서드
+     * @param direction 스와이프 방향 (LEFT 또는 RIGHT)
+     */
+    public void performSwipe(Direction direction) {
+        if (direction != Direction.LEFT && direction != Direction.RIGHT) {
+            Log.e(TAG, "스와이프는 LEFT 또는 RIGHT 방향만 지원됩니다");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (isGestureInProgress) {
+                Log.d(TAG, "다른 제스처가 진행 중입니다. 스와이프 무시됨");
+                return;
+            }
+
+            isGestureInProgress = true;
+
+            DisplayMetrics dm = getResources().getDisplayMetrics();
+            int screenHeight = dm.heightPixels;
+            int screenWidth = dm.widthPixels;
+            
+            // 스와이프 시작/끝 좌표 계산
+            float startY = screenHeight * 0.5f; // 화면 중앙 높이
+            float endY = startY;
+            float startX, endX;
+            
+            if (direction == Direction.LEFT) {
+                // 우측에서 좌측으로 스와이프 (뒤로가기)
+                startX = screenWidth * 0.95f;
+                endX = screenWidth * 0.1f;
+                Log.d(TAG, "우측→좌측 스와이프 실행 (뒤로가기)");
+            } else {
+                // 좌측에서 우측으로 스와이프 (앞으로가기)
+                startX = screenWidth * 0.05f;
+                endX = screenWidth * 0.9f;
+                Log.d(TAG, "좌측→우측 스와이프 실행 (앞으로가기)");
+            }
+
+            // 스와이프 경로 생성
+            Path swipePath = new Path();
+            swipePath.moveTo(startX, startY);
+            swipePath.lineTo(endX, endY);
+
+            // 스와이프 지속 시간 (빠르고 강력한 스와이프)
+            long swipeDuration = 400; // 400ms로 빠른 스와이프
+
+            GestureDescription.StrokeDescription swipeStroke =
+                    new GestureDescription.StrokeDescription(swipePath, 0, swipeDuration);
+            GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
+            gestureBuilder.addStroke(swipeStroke);
+
+            Log.d(TAG, String.format("스와이프 실행: (%.1f,%.1f) → (%.1f,%.1f), 지속시간: %dms", 
+                    startX, startY, endX, endY, swipeDuration));
+
+            dispatchGesture(gestureBuilder.build(), new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gestureDescription) {
+                    Log.d(TAG, "스와이프 제스처 완료됨");
+                    gestureHandler.postDelayed(gestureCompletionRunnable, 200);
+                }
+
+                @Override
+                public void onCancelled(GestureDescription gestureDescription) {
+                    Log.d(TAG, "스와이프 제스처 취소됨");
+                    gestureHandler.postDelayed(gestureCompletionRunnable, 100);
+                }
+            }, null);
+        } else {
+            Log.e(TAG, "API 레벨이 낮아 스와이프 제스처를 지원하지 않음");
+        }
+    }
+
+    /**
+     * 네비게이션 스와이프 (좌우 엣지에서 시작되는 시스템 네비게이션)
+     * @param direction 스와이프 방향
+     */
+    public void performNavigationSwipe(Direction direction) {
+        if (direction != Direction.LEFT && direction != Direction.RIGHT) {
+            Log.e(TAG, "네비게이션 스와이프는 LEFT 또는 RIGHT 방향만 지원됩니다");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (isGestureInProgress) {
+                Log.d(TAG, "다른 제스처가 진행 중입니다. 네비게이션 스와이프 무시됨");
+                return;
+            }
+
+            isGestureInProgress = true;
+
+            DisplayMetrics dm = getResources().getDisplayMetrics();
+            int screenHeight = dm.heightPixels;
+            int screenWidth = dm.widthPixels;
+            
+            // 네비게이션 스와이프 좌표 (엣지에서 시작)
+            float startY = screenHeight * 0.7f; // 하단 30% 지점
+            float endY = startY;
+            float startX, endX;
+            
+            if (direction == Direction.LEFT) {
+                // 우측 엣지에서 시작하는 뒤로가기 스와이프
+                startX = screenWidth - 1f; // 완전히 오른쪽 가장자리
+                endX = screenWidth * 0.5f; // 화면 중앙까지
+                Log.d(TAG, "우측 엣지→중앙 네비게이션 스와이프 (뒤로가기)");
+            } else {
+                // 좌측 엣지에서 시작하는 앞으로가기/메뉴 스와이프
+                startX = 1f; // 완전히 왼쪽 가장자리
+                endX = screenWidth * 0.5f; // 화면 중앙까지
+                Log.d(TAG, "좌측 엣지→중앙 네비게이션 스와이프 (앞으로가기/메뉴)");
+            }
+
+            // 네비게이션 스와이프 경로 생성
+            Path navPath = new Path();
+            navPath.moveTo(startX, startY);
+            navPath.lineTo(endX, endY);
+
+            // 네비게이션 스와이프는 더 느리고 부드럽게
+            long navDuration = 600;
+
+            GestureDescription.StrokeDescription navStroke =
+                    new GestureDescription.StrokeDescription(navPath, 0, navDuration);
+            GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
+            gestureBuilder.addStroke(navStroke);
+
+            Log.d(TAG, String.format("네비게이션 스와이프: (%.1f,%.1f) → (%.1f,%.1f), 지속시간: %dms", 
+                    startX, startY, endX, endY, navDuration));
+
+            dispatchGesture(gestureBuilder.build(), new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gestureDescription) {
+                    Log.d(TAG, "네비게이션 스와이프 완료됨");
+                    gestureHandler.postDelayed(gestureCompletionRunnable, 250);
+                }
+
+                @Override
+                public void onCancelled(GestureDescription gestureDescription) {
+                    Log.d(TAG, "네비게이션 스와이프 취소됨");
+                    gestureHandler.postDelayed(gestureCompletionRunnable, 125);
+                }
+            }, null);
+        } else {
+            Log.e(TAG, "API 레벨이 낮아 네비게이션 스와이프를 지원하지 않음");
+        }
+    }
+
+    /**
+     * 정적 메서드로 스와이프 수행
+     */
+    public static void performSwipeAction(Direction direction) {
+        if (instance != null) {
+            instance.performSwipe(direction);
+        } else {
+            Log.e(TAG, "접근성 서비스 인스턴스가 없습니다 - 스와이프 실행 불가");
+        }
+    }
+
+    /**
+     * 정적 메서드로 네비게이션 스와이프 수행
+     */
+    public static void performNavigationSwipeAction(Direction direction) {
+        if (instance != null) {
+            instance.performNavigationSwipe(direction);
+        } else {
+            Log.e(TAG, "접근성 서비스 인스턴스가 없습니다 - 네비게이션 스와이프 실행 불가");
         }
     }
 

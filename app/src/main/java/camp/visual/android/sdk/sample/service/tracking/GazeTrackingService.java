@@ -30,6 +30,7 @@ import camp.visual.android.sdk.sample.data.settings.SharedPrefsSettingsRepositor
 import camp.visual.android.sdk.sample.domain.filter.EnhancedOneEuroFilterManager;
 import camp.visual.android.sdk.sample.domain.interaction.ClickDetector;
 import camp.visual.android.sdk.sample.domain.interaction.EdgeScrollDetector;
+// SwipeDetector 제거 - EdgeScrollDetector가 스와이프 기능도 포함
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
 import camp.visual.android.sdk.sample.domain.performance.PerformanceMonitor;
 import camp.visual.android.sdk.sample.service.accessibility.MyAccessibilityService;
@@ -57,6 +58,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     private UserSettings userSettings;
     private ClickDetector clickDetector;
     private EdgeScrollDetector edgeScrollDetector;
+    // SwipeDetector 제거 - EdgeScrollDetector가 스와이프도 담당
 
     // 🆕 향상된 필터링 시스템
     private EnhancedOneEuroFilterManager enhancedFilterManager;
@@ -115,6 +117,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     private void initDetectors() {
         clickDetector = new ClickDetector(userSettings);
         edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
+        // SwipeDetector 제거 - EdgeScrollDetector가 모든 엣지 기능 담당
 
         // 🆕 향상된 OneEuroFilter 초기화
         enhancedFilterManager = new EnhancedOneEuroFilterManager(
@@ -126,6 +129,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
 
         Log.d(TAG, "향상된 OneEuroFilter 초기화 - 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
         Log.d(TAG, "안경 보정 기능: " + (enhancedFilterManager.isGlassesCompensationEnabled() ? "활성화" : "비활성화"));
+        Log.d(TAG, "통합 엣지 감지기(스크롤+스와이프) 초기화 완료");
     }
 
     // 🆕 엣지 메뉴 매니저 초기화
@@ -240,6 +244,73 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
         }
     }
 
+    // 🆕 캘리브레이션 완료 후 커서 오프셋 리셋
+    private void resetCursorOffsetsAfterCalibration() {
+        try {
+            // 현재 오프셋 값 로깅
+            float currentOffsetX = userSettings.getCursorOffsetX();
+            float currentOffsetY = userSettings.getCursorOffsetY();
+            
+            if (currentOffsetX != 0f || currentOffsetY != 0f) {
+                Log.d(TAG, String.format("캘리브레이션 완료 - 기존 오프셋 리셋: X=%.1f, Y=%.1f → X=0, Y=0", 
+                        currentOffsetX, currentOffsetY));
+                
+                // 오프셋을 0,0으로 리셋한 새 설정 생성
+                UserSettings resetSettings = new UserSettings.Builder()
+                        .calibrationStrategy(userSettings.getCalibrationStrategy())
+                        .backgroundLearningEnabled(userSettings.isBackgroundLearningEnabled())
+                        .autoOnePointCalibrationEnabled(userSettings.isAutoOnePointCalibrationEnabled())
+                        .cursorOffsetX(0f)  // 🔧 X 오프셋 리셋
+                        .cursorOffsetY(0f)  // 🔧 Y 오프셋 리셋
+                        .oneEuroFilterPreset(userSettings.getOneEuroFilterPreset())
+                        .clickTiming(userSettings.getClickTiming())
+                        .performanceOptimizationEnabled(userSettings.isPerformanceOptimizationEnabled())
+                        .performanceMode(userSettings.getPerformanceMode())
+                        .glassesCompensationEnabled(userSettings.isGlassesCompensationEnabled())
+                        .refractionCorrectionFactor(userSettings.getRefractionCorrectionFactor())
+                        .dynamicFilteringEnabled(userSettings.isDynamicFilteringEnabled())
+                        .targetFPS(userSettings.getTargetFPS())
+                        .build();
+                
+                // 설정 저장
+                settingsRepository.saveUserSettings(resetSettings);
+                
+                // 현재 userSettings 업데이트
+                userSettings = resetSettings;
+                
+                // 감지기들도 새 설정으로 업데이트
+                refreshDetectorsWithNewSettings();
+                
+                Log.d(TAG, "커서 오프셋 리셋 완료 - 새로운 캘리브레이션 기준으로 정확한 추적 시작");
+            } else {
+                Log.d(TAG, "캘리브레이션 완료 - 기존 오프셋이 이미 0이므로 리셋 불필요");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "커서 오프셋 리셋 중 오류 발생: " + e.getMessage(), e);
+        }
+    }
+    
+    // 🆕 새 설정으로 감지기들 업데이트
+    private void refreshDetectorsWithNewSettings() {
+        try {
+            clickDetector = new ClickDetector(userSettings);
+            edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
+            // SwipeDetector 제거 - EdgeScrollDetector가 모든 엣지 기능 담당
+            
+            // 향상된 필터 매니저도 업데이트
+            enhancedFilterManager = new EnhancedOneEuroFilterManager(
+                    userSettings.getOneEuroFreq(),
+                    userSettings.getOneEuroMinCutoff(),
+                    userSettings.getOneEuroBeta(),
+                    userSettings.getOneEuroDCutoff()
+            );
+            
+            Log.d(TAG, "모든 감지기가 새 설정으로 업데이트됨");
+        } catch (Exception e) {
+            Log.e(TAG, "감지기 업데이트 중 오류: " + e.getMessage(), e);
+        }
+    }
+
     private void resetCalibrationState() {
         isCalibrating = false;
         calibrationViewer.setVisibility(View.INVISIBLE);
@@ -338,16 +409,16 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
                             handler.postDelayed(() -> resetAll(), 500);
                         }
                     } else if (edge == EdgeScrollDetector.Edge.LEFT_BOTTOM) {
-                        // 🆕 좌측 하단 엣지 처리
+                        // 🆕 좌측 하단 엣지 처리 - 좌→우 스와이프
                         overlayCursorView.setTextPosition(false);
                         EdgeScrollDetector.ScrollAction action = edgeScrollDetector.processLeftBottomEdge();
                         overlayCursorView.setCursorText(edgeScrollDetector.getEdgeStateText());
 
-                        if (action == EdgeScrollDetector.ScrollAction.LEFT_BOTTOM_ACTION) {
-                            overlayCursorView.setCursorText("③");
-                            // TODO: 좌측 하단 액션 구현 (예: 좌측 스와이프 등)
-                            Log.d(TAG, "좌측 하단 액션 트리거됨!");
-                            handler.postDelayed(() -> resetAll(), 500);
+                        if (action == EdgeScrollDetector.ScrollAction.LEFT_BOTTOM_SWIPE_RIGHT) {
+                            overlayCursorView.setCursorText("➡️");
+                            Log.d(TAG, "좌측→우측 스와이프 완료! 앞으로가기 실행");
+                            MyAccessibilityService.performSwipeAction(MyAccessibilityService.Direction.RIGHT);
+                            handler.postDelayed(() -> resetAll(), 800);
                         }
                     } else if (edge == EdgeScrollDetector.Edge.RIGHT_TOP) {
                         // 🆕 우측 상단 엣지 처리 - 시스템 메뉴
@@ -362,18 +433,19 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
                             handler.postDelayed(() -> resetAll(), 500);
                         }
                     } else if (edge == EdgeScrollDetector.Edge.RIGHT_BOTTOM) {
-                        // 🆕 우측 하단 엣지 처리
+                        // 🆕 우측 하단 엣지 처리 - 우→좌 스와이프
                         overlayCursorView.setTextPosition(false);
                         EdgeScrollDetector.ScrollAction action = edgeScrollDetector.processRightBottomEdge();
                         overlayCursorView.setCursorText(edgeScrollDetector.getEdgeStateText());
 
-                        if (action == EdgeScrollDetector.ScrollAction.RIGHT_BOTTOM_ACTION) {
-                            overlayCursorView.setCursorText("③");
-                            // TODO: 우측 하단 액션 구현 (예: 우측 스와이프 등)
-                            Log.d(TAG, "우측 하단 액션 트리거됨!");
-                            handler.postDelayed(() -> resetAll(), 500);
+                        if (action == EdgeScrollDetector.ScrollAction.RIGHT_BOTTOM_SWIPE_LEFT) {
+                            overlayCursorView.setCursorText("⬅️");
+                            Log.d(TAG, "우측→좌측 스와이프 완료! 뒤로가기 실행");
+                            MyAccessibilityService.performSwipeAction(MyAccessibilityService.Direction.LEFT);
+                            handler.postDelayed(() -> resetAll(), 800);
                         }
                     } else if (!edgeScrollDetector.isActive()) {
+                        // 🆕 엣지가 활성화되지 않은 경우에만 클릭 감지
                         boolean clicked = clickDetector.update(safeX, safeY);
                         overlayCursorView.setProgress(clickDetector.getProgress());
                         overlayCursorView.setCursorText("●");
@@ -476,6 +548,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     private void resetAll() {
         edgeScrollDetector.resetAll();
         clickDetector.reset();
+        // SwipeDetector 제거 - EdgeScrollDetector가 모든 엣지 기능 담당
         overlayCursorView.setCursorText("●");
         overlayCursorView.setTextPosition(false);
         overlayCursorView.setProgress(0f);
@@ -557,7 +630,11 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
         public void onCalibrationFinished(double[] calibrationData) {
             hideCalibrationView();
             isCalibrating = false;
-            Toast.makeText(GazeTrackingService.this, "보정 완료 (HIGH 정확도)", Toast.LENGTH_SHORT).show();
+            
+            // 🆕 캘리브레이션 완료 후 커서 오프셋 자동 리셋
+            resetCursorOffsetsAfterCalibration();
+            
+            Toast.makeText(GazeTrackingService.this, "보정 완료 (HIGH 정확도)\n커서 오프셋이 초기화되었습니다", Toast.LENGTH_LONG).show();
         }
 
         @Override
@@ -624,10 +701,29 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
         return instance;
     }
 
+    // 🆕 수동 커서 오프셋 리셋 메서드 (설정 화면에서 호출 가능)
+    public void resetCursorOffsets() {
+        Log.d(TAG, "수동 커서 오프셋 리셋 요청");
+        resetCursorOffsetsAfterCalibration();
+        Toast.makeText(this, "커서 오프셋이 초기화되었습니다", Toast.LENGTH_SHORT).show();
+    }
+    
+    // 🆕 현재 오프셋 정보 조회
+    public String getCurrentOffsetInfo() {
+        return String.format("현재 커서 오프셋: X=%.1f, Y=%.1f", 
+                userSettings.getCursorOffsetX(), userSettings.getCursorOffsetY());
+    }
+    
+    // 🆕 오프셋 적용 상태 확인
+    public boolean hasActiveOffsets() {
+        return userSettings.getCursorOffsetX() != 0f || userSettings.getCursorOffsetY() != 0f;
+    }
+
     public void refreshSettings() {
         userSettings = settingsRepository.getUserSettings();
         clickDetector = new ClickDetector(userSettings);
         edgeScrollDetector = new EdgeScrollDetector(userSettings, this);
+        // SwipeDetector 제거 - EdgeScrollDetector가 모든 엣지 기능 담당
 
         // 🆕 향상된 필터 매니저 재초기화
         enhancedFilterManager = new EnhancedOneEuroFilterManager(
@@ -641,6 +737,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
         Log.d(TAG, "현재 커서 오프셋: X=" + userSettings.getCursorOffsetX() + ", Y=" + userSettings.getCursorOffsetY());
         Log.d(TAG, "현재 OneEuroFilter 프리셋: " + userSettings.getOneEuroFilterPreset().getDisplayName());
         Log.d(TAG, "향상된 필터 상태: " + enhancedFilterManager.getCurrentFilterInfo());
+        Log.d(TAG, "통합 엣지 감지기(스크롤+스와이프) 재초기화 완료");
     }
 
     // 🆕 성능 최적화 설정 메서드들

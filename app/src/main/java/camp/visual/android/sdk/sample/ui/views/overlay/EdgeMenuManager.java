@@ -27,6 +27,9 @@ public class EdgeMenuManager {
     private long hoverStartTime = 0;
     private static final long HOVER_CLICK_DURATION = 1000; // 1초 hover로 클릭
     
+    // UI 레이어 콜백
+    private UILayerCallback uiLayerCallback = null;
+    
     public EdgeMenuManager(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
@@ -82,6 +85,11 @@ public class EdgeMenuManager {
             isCanceling = false;
             cancelStartTime = 0;
             
+            // UI 레이어 콜백 호출
+            if (uiLayerCallback != null) {
+                uiLayerCallback.requestHighestLayer();
+            }
+            
         } catch (Exception e) {
             Log.e(TAG, "메뉴 표시 실패: " + e.getMessage(), e);
         }
@@ -103,6 +111,11 @@ public class EdgeMenuManager {
                         Log.w(TAG, "메뉴 뷰 제거 중 오류: " + e.getMessage());
                     }
                 }, 250);
+                
+                // UI 레이어 콜백 호출
+                if (uiLayerCallback != null) {
+                    uiLayerCallback.requestNormalLayer();
+                }
                 
                 Log.d(TAG, "활성 메뉴 숨김");
             } catch (Exception e) {
@@ -225,6 +238,20 @@ public class EdgeMenuManager {
         }
     }
     
+    // UI 레이어 콜백 설정
+    public void setUILayerCallback(UILayerCallback callback) {
+        this.uiLayerCallback = callback;
+        Log.d(TAG, "UI 레이어 콜백 설정됨");
+    }
+    
+    // 알림 패널 상태 변경 알림
+    public void notifyNotificationPanelChanged(boolean isOpen) {
+        if (uiLayerCallback != null) {
+            uiLayerCallback.onNotificationPanelStateChanged(isOpen);
+        }
+        Log.d(TAG, "알림 패널 상태 변경 알림: " + (isOpen ? "열림" : "닫힘"));
+    }
+    
     // 디버깅용 메서드
     public String getCurrentMenuStatus() {
         if (activeMenu == null) {
@@ -237,5 +264,26 @@ public class EdgeMenuManager {
         String hoverStatus = hoveredButton != null ? " (호버: " + hoveredButton.label + ")" : "";
         
         return menuType + " 메뉴 - " + state + cancelStatus + hoverStatus;
+    }
+    
+    // UI 레이어 콜백 인터페이스
+    public interface UILayerCallback {
+        /**
+         * 알림 패널 상태가 변경되었을 때 호출됩니다.
+         * @param isOpen 알림 패널이 열려있는지 여부
+         */
+        void onNotificationPanelStateChanged(boolean isOpen);
+        
+        /**
+         * 최고 우선순위 레이어를 요청합니다.
+         * 메뉴가 표시될 때 커서가 메뉴 위에 표시되도록 합니다.
+         */
+        void requestHighestLayer();
+        
+        /**
+         * 일반 레이어로 복귀를 요청합니다.
+         * 메뉴가 숨겨질 때 커서를 일반 레이어로 복귀시킵니다.
+         */
+        void requestNormalLayer();
     }
 }

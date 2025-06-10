@@ -53,7 +53,7 @@ import camp.visual.eyedid.gazetracker.util.ViewLayoutChecker;
 
 public class MainActivity extends AppCompatActivity {
     private GazeTracker gazeTracker;
-    private final String EYEDID_SDK_LICENSE = "dev_plnp4o1ya7d0tif2rmgko169l1z4jnali2q4f63f";
+    private final String EYEDID_SDK_LICENSE = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
     private final CalibrationModeType calibrationType = CalibrationModeType.DEFAULT;
     private final String[] PERMISSIONS = new String[]{
             Manifest.permission.CAMERA
@@ -237,6 +237,7 @@ public class MainActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("시선 보정")
                 .setMessage("화면에 나타나는 5개의 점을 차례로 응시해 주세요.\n\n" +
+                        "⚠️ 기존 위치 조정값이 초기화되고 새로운 보정을 실행합니다.\n\n" +
                         "약 10-15초 정도 소요됩니다.")
                 .setPositiveButton("시작", (dialog, which) -> {
                     if (isServiceRunning()) {

@@ -1,14 +1,12 @@
 package camp.visual.android.sdk.sample.ui.views.overlay;
 
-import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RectF;
-import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
@@ -17,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class EdgeMenuOverlay extends View {
+    
+    private static final String TAG = "EdgeMenuOverlay";
     
     public enum MenuState {
         HIDDEN, SHOWING, CANCELING
@@ -40,17 +40,22 @@ public abstract class EdgeMenuOverlay extends View {
     protected float cancelProgress = 0f; // 취소 진행률
     protected float hoverProgress = 0f; // 호버 클릭 진행률 (0.0~1.0)
     
-    // 메뉴 설정
+    // 메뉴 설정 (HTML과 동일한 값들)
     protected static final int BUTTON_COUNT = 4; // 기본 버튼 개수
-    protected static final float MENU_RADIUS = 120f; // 메뉴 반지름 (dp) - 대폭 축소!
-    protected static final float BUTTON_RADIUS = 42f; // 버튼 반지름 (dp) - 더 크게
-    protected static final float CORNER_MARGIN = 100f; // 모서리 여백 (dp)
+    protected static final float MENU_RADIUS = 80f; // 메뉴 반지름 (dp) - HTML과 동일
+    protected static final float BUTTON_SIZE = 50f; // 버튼 크기 (dp) - HTML과 동일
+    protected static final float BUTTON_RADIUS = 25f; // 버튼 반지름 (dp) - BUTTON_SIZE/2
+    protected static final float CORNER_MARGIN = 50f; // 모서리 여백 (dp)
     protected static final float TRIGGER_CENTER_OFFSET = 60f; // 트리거 영역 중심 오프셋 (dp)
     protected static final float MIN_DISTANCE_FROM_EDGE = 50f; // 화면 가장자리로부터 최소 거리 (dp)
+    
+    // 🆕 원형 메뉴 특수 설정
+    protected static final boolean ENABLE_SAFE_MARGIN = false; // 원형 메뉴에서는 safeMargin 비활성화
     
     protected float menuRadiusPx;
     protected float buttonRadiusPx;
     protected float cornerMarginPx;
+    protected float minDistancePx;
     
     public EdgeMenuOverlay(Context context, Corner corner) {
         super(context);
@@ -94,12 +99,39 @@ public abstract class EdgeMenuOverlay extends View {
         menuRadiusPx = MENU_RADIUS * density;
         buttonRadiusPx = BUTTON_RADIUS * density;
         cornerMarginPx = CORNER_MARGIN * density;
+        minDistancePx = MIN_DISTANCE_FROM_EDGE * density;
     }
     
     protected abstract void initMenuButtons();
     
     protected void addMenuButton(String icon, String label, Runnable action) {
         menuButtons.add(new MenuButton(icon, label, action));
+    }
+    
+    // 공통 메뉴 중심점 계산 (HTML과 정확히 동일하게 수정)
+    private float[] getMenuCenter() {
+        float centerX, centerY;
+        
+        if (corner == Corner.LEFT_TOP) {
+            // 좌상단: 화면 왼쪽 가장자리, 높이의 25% 지점
+            centerX = 0f;
+            centerY = getHeight() / 4f;
+        } else {
+            // 우상단: 화면 오른쪽 가장자리, 높이의 25% 지점  
+            centerX = getWidth();
+            centerY = getHeight() / 4f;
+        }
+        
+        return new float[]{centerX, centerY};
+    }
+
+    // 반원 효과를 위한 배경 중심점 (회색 원이 화면 테두리에 위치)
+    private float[] getBackgroundCenter() {
+        if (corner == Corner.LEFT_TOP) {
+            return new float[]{0f, getHeight() / 4f}; // 왼쪽 테두리
+        } else {
+            return new float[]{getWidth(), getHeight() / 4f}; // 오른쪽 테두리
+        }
     }
     
     @Override
@@ -124,158 +156,184 @@ public abstract class EdgeMenuOverlay extends View {
     }
     
     private void drawBackground(Canvas canvas) {
-        // 실제 트리거 영역의 중심점을 계산
-        float centerX, centerY;
+        float[] bgCenter = getBackgroundCenter();
+        float centerX = bgCenter[0];
+        float centerY = bgCenter[1];
         
-        // 🔍 디버깅: 임시로 중심점을 화면 중앙 근처로 이동해서 테스트
+        // MD 가이드: 반투명 회색 원이 화면 테두리에서 반만 나타남
+        float radius = menuRadiusPx * menuProgress;
+        
+        // 메인 배경 원 (반투명 회색)
+        Paint mainBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mainBgPaint.setColor(Color.argb(120, 128, 128, 128)); // MD 가이드: 반투명 회색
+        canvas.drawCircle(centerX, centerY, radius, mainBgPaint);
+        
+        // 더 부드러운 테두리 효과
+        Paint edgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        edgePaint.setColor(Color.argb(60, 128, 128, 128));
+        canvas.drawCircle(centerX, centerY, radius * 1.1f, edgePaint);
+        
+        // 안쪽 그라데이션 효과
+        Paint innerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        innerPaint.setColor(Color.argb(80, 160, 160, 160));
+        canvas.drawCircle(centerX, centerY, radius * 0.7f, innerPaint);
+    }
+    
+    // MD 가이드의 정확한 삼각함수 값 테이블 구현
+    private AngleData calculatePreciseButtonPosition(int buttonIndex) {
         if (corner == Corner.LEFT_TOP) {
-            // 좌상단: 임시로 더 안쪽으로 이동
-            centerX = getWidth() * 0.3f;  // 30% 위치로 테스트
-            centerY = getHeight() * 0.3f; // 30% 위치로 테스트
+            // 좌상단 메뉴: 1시~5시 방향 배치 (정확한 cos/sin 값)
+            switch (buttonIndex) {
+                case 0: return new AngleData(-67.5f, 0.383f, -0.924f);  // 12.5시 방향
+                case 1: return new AngleData(-22.5f, 0.924f, -0.383f);  // 1.5시 방향  
+                case 2: return new AngleData(22.5f, 0.924f, 0.383f);    // 2.5시 방향
+                case 3: return new AngleData(67.5f, 0.383f, 0.924f);    // 5.5시 방향
+                default: return new AngleData(0f, 1f, 0f);
+            }
         } else {
-            // 우상단: 임시로 더 안쪽으로 이동
-            centerX = getWidth() * 0.7f;  // 70% 위치로 테스트
-            centerY = getHeight() * 0.3f; // 30% 위치로 테스트
+            // 우상단 메뉴: 7시~11시 방향 배치 (대칭)
+            switch (buttonIndex) {
+                case 0: return new AngleData(-112.5f, -0.383f, -0.924f); // 11.5시 방향
+                case 1: return new AngleData(-157.5f, -0.924f, 0.383f);  // 9.5시 방향
+                case 2: return new AngleData(-202.5f, -0.924f, -0.383f); // 10.5시 방향
+                case 3: return new AngleData(112.5f, -0.383f, 0.924f);   // 7.5시 방향
+                default: return new AngleData(180f, -1f, 0f);
+            }
         }
+    }
+
+    private static class AngleData {
+        final float angle;
+        final float cosValue;
+        final float sinValue;
         
-        // 반투명 원형 배경 그리기 (더 부드러운 느낌)
-        float backgroundRadius = menuRadiusPx * menuProgress * 0.8f;
-        
-        // 그라데이션 효과를 위한 여러 원 그리기
-        for (int i = 0; i < 3; i++) {
-            float radius = backgroundRadius * (1f - i * 0.15f);
-            int alpha = (int)(120 * (1f - i * 0.3f) * menuProgress);
-            backgroundPaint.setColor(Color.argb(alpha, 0, 0, 0));
-            canvas.drawCircle(centerX, centerY, radius, backgroundPaint);
+        AngleData(float angle, float cosValue, float sinValue) {
+            this.angle = angle;
+            this.cosValue = cosValue;
+            this.sinValue = sinValue;
         }
     }
     
     private void drawMenuButtons(Canvas canvas) {
-        // 실제 트리거 영역의 중심점을 계산
-        float centerX, centerY;
-        
-        // 🔍 디버깅: 임시로 중심점을 화면 중앙 근처로 이동해서 테스트
-        if (corner == Corner.LEFT_TOP) {
-            // 좌상단: 임시로 더 안쪽으로 이동
-            centerX = getWidth() * 0.3f;  // 30% 위치로 테스트
-            centerY = getHeight() * 0.3f; // 30% 위치로 테스트
-        } else {
-            // 우상단: 임시로 더 안쪽으로 이동
-            centerX = getWidth() * 0.7f;  // 70% 위치로 테스트
-            centerY = getHeight() * 0.3f; // 30% 위치로 테스트
-        }
-        
-        float minDistancePx = MIN_DISTANCE_FROM_EDGE * getResources().getDisplayMetrics().density;
+        float[] center = getMenuCenter();
+        float centerX = center[0];
+        float centerY = center[1];
         
         for (int i = 0; i < menuButtons.size(); i++) {
             MenuButton button = menuButtons.get(i);
             
-            // 버튼 위치 계산 (더 넓은 간격으로 원형 배치)
-            float angle = calculateButtonAngle(i);
-            float distance = menuRadiusPx * 0.45f * 1.0f; // 🔍 디버깅: menuProgress를 1.0으로 고정해서 테스트
+            // 정확한 버튼 위치 계산
+            AngleData angleData = calculatePreciseButtonPosition(i);
             
-            float buttonX = centerX + (float) Math.cos(Math.toRadians(angle)) * distance;
-            float buttonY = centerY + (float) Math.sin(Math.toRadians(angle)) * distance;
+            // HTML과 동일한 고정 거리 사용 (80dp, 애니메이션 무관)
+            float distance = MENU_RADIUS * getResources().getDisplayMetrics().density; // 80dp 고정
             
-            // 🔍 디버깅: 버튼 위치 로그
-            android.util.Log.d("EdgeMenuOverlay", String.format(
-                "Button[%d] %s: angle=%.1f°, center=(%.1f,%.1f), distance=%.1f, pos=(%.1f,%.1f)", 
-                i, button.label, angle, centerX, centerY, distance, buttonX, buttonY));
+            // MD 가이드 공식: center + (radius * cos(angle), radius * sin(angle))
+            float buttonX = centerX + distance * angleData.cosValue;
+            float buttonY = centerY + distance * angleData.sinValue;
             
-            // 화면 경계 체크 및 조정 (강력한 안전장치)
-            float safeMargin = minDistancePx + buttonRadiusPx;
-            buttonX = Math.max(safeMargin, Math.min(getWidth() - safeMargin, buttonX));
-            buttonY = Math.max(safeMargin, Math.min(getHeight() - safeMargin - 80f, buttonY)); // 라벨 공간 충분히 확보
+            // 버튼은 중심점 기준으로 그려지므로 추가 오프셋 불필요
+            // (HTML과 달리 Android Canvas는 중심점 기준 드로잉)
             
-            // 버튼 배경 그리기 (더 세련된 스타일)
-            float currentButtonRadius = buttonRadiusPx * 1.0f; // 🔍 디버깅: menuProgress를 1.0으로 고정해서 테스트
-            float shadowOffset = 4f * getResources().getDisplayMetrics().density;
-            
-            if (button == hoveredButton) {
-                // 호버 시 그림자 효과
-                Paint shadowPaint = new Paint(buttonPaint);
-                shadowPaint.setColor(Color.argb(80, 0, 0, 0));
-                canvas.drawCircle(buttonX + shadowOffset, buttonY + shadowOffset, 
-                                currentButtonRadius * 1.3f, shadowPaint);
-                
-                buttonPaint.setColor(Color.argb(255, 100, 150, 255)); // 호버 시 진한 파란색
-                currentButtonRadius *= 1.3f; // 크기 확대
+            // 🔧 중요: 원형 메뉴에서는 안전장치 비활성화 (반원 효과를 위해)
+            if (ENABLE_SAFE_MARGIN) {
+                // 일반 UI에서는 안전장치 적용
+                float safeMargin = minDistancePx + buttonRadiusPx;
+                buttonX = Math.max(safeMargin, Math.min(getWidth() - safeMargin, buttonX));
+                buttonY = Math.max(safeMargin, Math.min(getHeight() - safeMargin - 80f, buttonY));
             } else {
-                // 일반 상태 그림자
-                Paint shadowPaint = new Paint(buttonPaint);
-                shadowPaint.setColor(Color.argb(50, 0, 0, 0));
-                canvas.drawCircle(buttonX + shadowOffset/2, buttonY + shadowOffset/2, 
-                                currentButtonRadius, shadowPaint);
-                
-                buttonPaint.setColor(Color.argb(230, 255, 255, 255)); // 기본 흰색
+                // 원형 메뉴에서는 안전장치 비활성화
+                Log.d(TAG, "원형 메뉴 모드: 안전장치 비활성화");
             }
             
-            canvas.drawCircle(buttonX, buttonY, currentButtonRadius, buttonPaint);
-            
-            // 아이콘 그리기 (크기 조정)
-            float iconSize = iconPaint.getTextSize();
-            if (button == hoveredButton) {
-                iconPaint.setTextSize(iconSize * 1.1f);
-            }
-            float iconY = buttonY + iconPaint.getTextSize() * 0.35f;
-            canvas.drawText(button.icon, buttonX, iconY, iconPaint);
-            iconPaint.setTextSize(iconSize); // 원래 크기로 복원
-            
-            // 라벨 그리기 (버튼 아래, 더 적절한 간격)
-            float labelY = buttonY + currentButtonRadius + textPaint.getTextSize() + 15f;
-            if (button == hoveredButton && hoverProgress > 0f) {
-                // 호버 중일 때 라벨 색상 변화
-                int alpha = (int)(255 * (0.8f + 0.2f * hoverProgress));
-                textPaint.setColor(Color.argb(alpha, 100, 150, 255));
-            } else {
-                textPaint.setColor(Color.argb(200, 255, 255, 255));
-            }
-            canvas.drawText(button.label, buttonX, labelY, textPaint);
-            
-            // 버튼 위치 저장 (클릭 감지용)
-            button.centerX = buttonX;
-            button.centerY = buttonY;
-            button.radius = currentButtonRadius;
+            drawSingleButton(canvas, button, buttonX, buttonY, i);
         }
     }
     
-    private float calculateButtonAngle(int buttonIndex) {
-        // 종료 버튼(135도)을 기준으로 반구를 따라 더 넓은 간격으로 배치
-        if (corner == Corner.LEFT_TOP) {
-            // 좌상단: 종료 버튼(135도)을 기준으로 더 넓은 간격
-            switch (buttonIndex) {
-                case 0: return 30f;  // 뒤로: 105도 차이
-                case 1: return 60f;  // 홈: 75도 차이
-                case 2: return 90f;  // 최근: 45도 차이
-                case 3: return 135f; // 종료: 기준점
-                default: return 45f;
-            }
+    private void drawSingleButton(Canvas canvas, MenuButton button, float buttonX, float buttonY, int index) {
+        // 버튼 배경 그리기 (더 세련된 스타일)
+        float currentButtonRadius = buttonRadiusPx * menuProgress;
+        float shadowOffset = 4f * getResources().getDisplayMetrics().density;
+        
+        if (button == hoveredButton) {
+            // 호버 시 그림자 효과
+            Paint shadowPaint = new Paint(buttonPaint);
+            shadowPaint.setColor(Color.argb(80, 0, 0, 0));
+            canvas.drawCircle(buttonX + shadowOffset, buttonY + shadowOffset, 
+                            currentButtonRadius * 1.3f, shadowPaint);
+            
+            buttonPaint.setColor(Color.argb(255, 100, 150, 255)); // 호버 시 진한 파란색
+            currentButtonRadius *= 1.3f; // 크기 확대
         } else {
-            // 우상단: 대칭적 배치
-            switch (buttonIndex) {
-                case 0: return 150f; // 뒤로
-                case 1: return 120f; // 홈
-                case 2: return 90f;  // 최근
-                case 3: return 45f;  // 종료
-                default: return 135f;
-            }
+            // 일반 상태 그림자
+            Paint shadowPaint = new Paint(buttonPaint);
+            shadowPaint.setColor(Color.argb(50, 0, 0, 0));
+            canvas.drawCircle(buttonX + shadowOffset/2, buttonY + shadowOffset/2, 
+                            currentButtonRadius, shadowPaint);
+            
+            buttonPaint.setColor(Color.argb(230, 255, 255, 255)); // 기본 흰색
         }
+        
+        canvas.drawCircle(buttonX, buttonY, currentButtonRadius, buttonPaint);
+        
+        // 아이콘 그리기 (크기 조정)
+        float iconSize = iconPaint.getTextSize();
+        if (button == hoveredButton) {
+            iconPaint.setTextSize(iconSize * 1.1f);
+        }
+        float iconY = buttonY + iconPaint.getTextSize() * 0.35f;
+        canvas.drawText(button.icon, buttonX, iconY, iconPaint);
+        iconPaint.setTextSize(iconSize); // 원래 크기로 복원
+        
+        // 라벨 그리기 (위치별 배치)
+        drawButtonLabel(canvas, button, buttonX, buttonY, currentButtonRadius);
+        
+        // 버튼 위치 저장 (클릭 감지용)
+        button.centerX = buttonX;
+        button.centerY = buttonY;
+        button.radius = currentButtonRadius;
+    }
+    
+    private void drawButtonLabel(Canvas canvas, MenuButton button, float buttonX, float buttonY, float buttonRadius) {
+        float textGapPx = 8f * getResources().getDisplayMetrics().density; // MD 가이드 텍스트 간격
+        
+        float labelX, labelY;
+        
+        if (corner == Corner.LEFT_TOP) {
+            // 좌측 메뉴: 텍스트를 버튼 오른쪽에 배치 (MD 가이드)
+            labelX = buttonX + buttonRadius + textGapPx;
+            labelY = buttonY + textPaint.getTextSize() / 3f;
+            textPaint.setTextAlign(Paint.Align.LEFT);
+        } else {
+            // 우측 메뉴: 텍스트를 버튼 왼쪽에 배치 (MD 가이드)
+            labelX = buttonX - buttonRadius - textGapPx;
+            labelY = buttonY + textPaint.getTextSize() / 3f;
+            textPaint.setTextAlign(Paint.Align.RIGHT);
+        }
+        
+        // 화면 경계 체크
+        if (labelX < 20f || labelX > getWidth() - 100f) {
+            // 텍스트가 화면 밖으로 나가면 버튼 아래에 배치
+            labelX = buttonX;
+            labelY = buttonY + buttonRadius + textPaint.getTextSize() + textGapPx;
+            textPaint.setTextAlign(Paint.Align.CENTER);
+        }
+        
+        // 호버 중일 때 라벨 색상 변화
+        if (button == hoveredButton && hoverProgress > 0f) {
+            int alpha = (int)(255 * (0.8f + 0.2f * hoverProgress));
+            textPaint.setColor(Color.argb(alpha, 100, 150, 255));
+        } else {
+            textPaint.setColor(Color.argb(200, 255, 255, 255));
+        }
+        
+        canvas.drawText(button.label, labelX, labelY, textPaint);
     }
     
     private void drawCancelProgress(Canvas canvas) {
-        // 실제 트리거 영역의 중심점을 계산
-        float centerX, centerY;
-        
-        // 🔍 디버깅: 임시로 중심점을 화면 중앙 근처로 이동해서 테스트
-        if (corner == Corner.LEFT_TOP) {
-            // 좌상단: 임시로 더 안쪽으로 이동
-            centerX = getWidth() * 0.3f;  // 30% 위치로 테스트
-            centerY = getHeight() * 0.3f; // 30% 위치로 테스트
-        } else {
-            // 우상단: 임시로 더 안쪽으로 이동
-            centerX = getWidth() * 0.7f;  // 70% 위치로 테스트
-            centerY = getHeight() * 0.3f; // 30% 위치로 테스트
-        }
+        float[] center = getMenuCenter();
+        float centerX = center[0];
+        float centerY = center[1];
         
         // 취소 진행률을 원형으로 표시 (더 세련된 스타일)
         float progressRadius = menuRadiusPx * 0.85f;
