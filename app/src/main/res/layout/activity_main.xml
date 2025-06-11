@@ -7,24 +7,238 @@
     android:layout_height="match_parent"
     tools:context=".ui.main.MainActivity">
 
+  <!-- 🎯 모서리 기능 시각화 배경 -->
+  
+  <!-- 상단 테두리: 아래로 스크롤 -->
+  <LinearLayout
+      android:id="@+id/edge_guide_top"
+      android:layout_width="0dp"
+      android:layout_height="40dp"
+      android:layout_marginStart="20dp"
+      android:layout_marginEnd="20dp"
+      android:background="#40E74C3C"
+      android:gravity="center"
+      android:orientation="horizontal"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintEnd_toEndOf="parent">
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="🔽 아래로 스크롤"
+          android:textColor="#E74C3C"
+          android:textSize="18sp"
+          android:textStyle="bold" />
+  </LinearLayout>
+
+  <!-- 하단 테두리: 위로 스크롤 -->
+  <LinearLayout
+      android:id="@+id/edge_guide_bottom"
+      android:layout_width="0dp"
+      android:layout_height="40dp"
+      android:layout_marginStart="20dp"
+      android:layout_marginEnd="20dp"
+      android:background="#40E74C3C"
+      android:gravity="center"
+      android:orientation="horizontal"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintEnd_toEndOf="parent">
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="🔼 위로 스크롤"
+          android:textColor="#E74C3C"
+          android:textSize="18sp"
+          android:textStyle="bold" />
+  </LinearLayout>
+
+  <!-- 좌측 상단: 네비게이션 메뉴 -->
+  <LinearLayout
+      android:id="@+id/edge_guide_left_top"
+      android:layout_width="100dp"
+      android:layout_height="0dp"
+      android:layout_marginTop="40dp"
+      android:background="#403498DB"
+      android:gravity="center"
+      android:orientation="vertical"
+      android:padding="8dp"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintBottom_toTopOf="@+id/guideline_horizontal_center"
+      app:layout_constraintStart_toStartOf="parent">
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="좌측 메뉴"
+          android:textColor="#3498DB"
+          android:textSize="18sp"
+          android:textStyle="bold"
+          android:gravity="center" />
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="6dp"
+          android:text="-뒤로 가기\n-홈 버튼\n-최근 앱\n-앱 종료"
+          android:textColor="#3498DB"
+          android:textSize="12sp"
+          android:textStyle="bold"
+          android:gravity="start"
+          android:lineSpacingExtra="2dp" />
+  </LinearLayout>
+
+  <!-- 우측 상단: 시스템 메뉴 -->
+  <LinearLayout
+      android:id="@+id/edge_guide_right_top"
+      android:layout_width="100dp"
+      android:layout_height="0dp"
+      android:layout_marginTop="40dp"
+      android:background="#403498DB"
+      android:gravity="center"
+      android:orientation="vertical"
+      android:padding="8dp"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintBottom_toTopOf="@+id/guideline_horizontal_center"
+      app:layout_constraintEnd_toEndOf="parent">
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="우측 메뉴"
+          android:textColor="#3498DB"
+          android:textSize="18sp"
+          android:textStyle="bold"
+          android:gravity="center" />
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="6dp"
+          android:text="알림창-\n설정-\n화면 캡처-\n볼륨-"
+          android:textColor="#3498DB"
+          android:textSize="12sp"
+          android:textStyle="bold"
+          android:gravity="end"
+          android:lineSpacingExtra="2dp" />
+  </LinearLayout>
+
+  <!-- 좌측 하단: 앞으로가기 스와이프 -->
+  <LinearLayout
+      android:id="@+id/edge_guide_left_bottom"
+      android:layout_width="100dp"
+      android:layout_height="0dp"
+      android:layout_marginBottom="40dp"
+      android:background="#409B59B6"
+      android:gravity="center"
+      android:orientation="vertical"
+      android:padding="8dp"
+      app:layout_constraintTop_toBottomOf="@+id/guideline_horizontal_center"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintStart_toStartOf="parent">
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="➡️"
+          android:textColor="#9B59B6"
+          android:textSize="24sp"
+          android:textStyle="bold"
+          android:gravity="center" />
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="6dp"
+          android:text="오른쪽으로\n스와이프"
+          android:textColor="#9B59B6"
+          android:textSize="14sp"
+          android:textStyle="bold"
+          android:gravity="center"
+          android:lineSpacingExtra="2dp" />
+  </LinearLayout>
+
+  <!-- 우측 하단: 뒤로가기 스와이프 -->
+  <LinearLayout
+      android:id="@+id/edge_guide_right_bottom"
+      android:layout_width="100dp"
+      android:layout_height="0dp"
+      android:layout_marginBottom="40dp"
+      android:background="#409B59B6"
+      android:gravity="center"
+      android:orientation="vertical"
+      android:padding="8dp"
+      app:layout_constraintTop_toBottomOf="@+id/guideline_horizontal_center"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent">
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="⬅️"
+          android:textColor="#9B59B6"
+          android:textSize="24sp"
+          android:textStyle="bold"
+          android:gravity="center" />
+      
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="6dp"
+          android:text="왼쪽으로\n스와이프"
+          android:textColor="#9B59B6"
+          android:textSize="14sp"
+          android:textStyle="bold"
+          android:gravity="center"
+          android:lineSpacingExtra="2dp" />
+  </LinearLayout>
+
+  <!-- 가이드라인 -->
+  <androidx.constraintlayout.widget.Guideline
+      android:id="@+id/guideline_horizontal_center"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      app:layout_constraintGuide_percent="0.5" />
+
+  <!-- 🎮 중앙 버튼 영역 -->
   <LinearLayout
       android:id="@+id/linearLayout_buttons"
-      android:layout_width="200dp"
+      android:layout_width="220dp"
       android:layout_height="wrap_content"
       android:orientation="vertical"
       android:visibility="visible"
-      android:layout_margin="10dp"
+      android:layout_margin="16dp"
+      android:background="#10FFFFFF"
+      android:padding="16dp"
+      app:layout_constraintTop_toTopOf="parent"
       app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintEnd_toEndOf="parent">
+
+    <!-- 🆕 연습용 버튼 (응시 클릭 체험용) - 맨 위에 배치 -->
+    <Button
+        android:id="@+id/btn_practice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="👆 응시 클릭 연습용"
+        android:textSize="14sp"
+        android:padding="12dp"
+        android:backgroundTint="#FF9800"
+        android:textColor="@android:color/white"
+        android:visibility="gone" />
 
     <!-- 시선 보정 버튼 -->
     <Button
         android:id="@+id/btn_calibration"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="시선 보정"
+        android:text="🎯 시선 보정"
         android:textSize="16sp"
         android:padding="12dp"
+        android:layout_marginTop="8dp"
         android:backgroundTint="#4CAF50"
         android:textColor="@android:color/white" />
 
@@ -33,28 +247,16 @@
         android:id="@+id/btn_settings"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="설정"
-        android:layout_marginTop="8dp" />
-
-    <!-- 🆕 연습용 버튼 (응시 클릭 체험용) -->
-    <Button
-        android:id="@+id/btn_practice"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="👆 응시 클릭 연습용"
+        android:text="⚙️ 설정"
         android:textSize="14sp"
-        android:padding="10dp"
-        android:layout_marginTop="8dp"
-        android:backgroundTint="#FF9800"
-        android:textColor="@android:color/white"
-        android:visibility="gone" />
+        android:layout_marginTop="8dp" />
 
     <!-- 🆕 앱 종료 버튼 추가 -->
     <Button
         android:id="@+id/btn_exit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="앱 종료"
+        android:text="🚪 앱 종료"
         android:textSize="14sp"
         android:padding="10dp"
         android:layout_marginTop="8dp"
@@ -72,6 +274,7 @@
       android:text="초기화 중..."
       android:textSize="16sp"
       android:textColor="@android:color/holo_blue_bright"
+      android:visibility="gone"
       app:layout_constraintTop_toTopOf="parent"
       app:layout_constraintStart_toStartOf="parent" />
 
@@ -115,6 +318,7 @@
       android:text="SDK Version:"
       android:textColor="@android:color/holo_blue_bright"
       android:textSize="14sp"
+      android:visibility="gone"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintLeft_toLeftOf="parent" />
 

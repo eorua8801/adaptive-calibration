@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#80000000">
+
+    <!-- 상단 테두리: 아래로 스크롤 -->
+    <LinearLayout
+        android:id="@+id/edge_top"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_gravity="top"
+        android:background="#E74C3C"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:alpha="0.9">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔽 아래로 스크롤"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+    </LinearLayout>
+
+    <!-- 하단 테두리: 위로 스크롤 -->
+    <LinearLayout
+        android:id="@+id/edge_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_gravity="bottom"
+        android:background="#E74C3C"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:alpha="0.9">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔼 위로 스크롤"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+    </LinearLayout>
+
+    <!-- 좌측 상단: 네비게이션 메뉴 -->
+    <LinearLayout
+        android:id="@+id/edge_left_top"
+        android:layout_width="160dp"
+        android:layout_height="200dp"
+        android:layout_gravity="top|start"
+        android:layout_marginTop="60dp"
+        android:background="#3498DB"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:alpha="0.9"
+        android:padding="16dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📱 네비게이션 메뉴"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="• 뒤로 가기\n• 홈 버튼\n• 최근 앱\n• 앱 종료"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:gravity="start"
+            android:lineSpacingExtra="2dp" />
+    </LinearLayout>
+
+    <!-- 우측 상단: 시스템 메뉴 -->
+    <LinearLayout
+        android:id="@+id/edge_right_top"
+        android:layout_width="160dp"
+        android:layout_height="200dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="60dp"
+        android:background="#3498DB"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:alpha="0.9"
+        android:padding="16dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚙️ 시스템 메뉴"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="• 알림창\n• 설정\n• 화면 캡처\n• 볼륨"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:gravity="start"
+            android:lineSpacingExtra="2dp" />
+    </LinearLayout>
+
+    <!-- 좌측 하단: 앞으로가기 스와이프 -->
+    <LinearLayout
+        android:id="@+id/edge_left_bottom"
+        android:layout_width="160dp"
+        android:layout_height="200dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginBottom="60dp"
+        android:background="#9B59B6"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:alpha="0.9"
+        android:padding="16dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="➡️ 앞으로가기"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="오른쪽으로\n스와이프"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:lineSpacingExtra="2dp" />
+    </LinearLayout>
+
+    <!-- 우측 하단: 뒤로가기 스와이프 -->
+    <LinearLayout
+        android:id="@+id/edge_right_bottom"
+        android:layout_width="160dp"
+        android:layout_height="200dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="60dp"
+        android:background="#9B59B6"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:alpha="0.9"
+        android:padding="16dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⬅️ 뒤로가기"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="왼쪽으로\n스와이프"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:lineSpacingExtra="2dp" />
+    </LinearLayout>
+
+    <!-- 중앙 안내 메시지 -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="#2C3E50"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center"
+        android:alpha="0.95">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎯 모서리 기능 가이드"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="각 모서리를 3초간 응시하면\n해당 기능이 실행됩니다"
+            android:textColor="#BDC3C7"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="아무 곳이나 터치하면 닫힙니다"
+            android:textColor="#95A5A6"
+            android:textSize="14sp"
+            android:gravity="center" />
+    </LinearLayout>
+
+</FrameLayout>

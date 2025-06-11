@@ -11,8 +11,11 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -80,6 +83,11 @@ public class MainActivity extends AppCompatActivity {
     private UserSettings userSettings;
 
     private static MainActivity instance;
+    
+    // 🆕 모서리 가이드 오버레이 관련 변수들
+    private View edgeGuideOverlay;
+    private WindowManager windowManager;
+    private boolean isEdgeGuideShowing = false;
 
     public static MainActivity getInstance() {
         return instance;
@@ -102,35 +110,25 @@ public class MainActivity extends AppCompatActivity {
 
     /*
      * ================================================================================================
-     * 📝 TODO: 다음 채팅에서 구현할 내용
+     * 🎉 체험 가이드 구현 완료!
      * ================================================================================================
      * 
-     * 1. activity_main.xml에 btn_practice 버튼 추가 필요:
-     *    <Button
-     *        android:id="@+id/btn_practice"
-     *        android:layout_width="wrap_content"
-     *        android:layout_height="wrap_content"
-     *        android:text="👆 응시 클릭 연습용"
-     *        android:visibility="gone" />
+     * ✅ 완료된 내용:
+     * 1. activity_main.xml에 btn_practice 버튼 추가 완료
+     * 2. 모서리 기능 시각화 가이드 구현 완료:
+     *    - overlay_edge_guide.xml 레이아웃 생성
+     *    - showEdgeGuideOverlay() 메서드 구현
+     *    - HTML 파일 참고하여 6개 모서리 영역 시각화
+     * 3. 체험 플로우 완성:
+     *    연습용 버튼 응시 → 성공 메시지 → 모서리 가이드 표시
      * 
-     * 2. 모서리 기능 시각화 가이드 구현:
-     *    - HTML 파일 참고하여 모서리 영역별 기능 시각화
-     *    - 상단: 아래로 스크롤, 하단: 위로 스크롤
-     *    - 좌상단: 네비게이션 메뉴, 우상단: 시스템 메뉴
-     *    - 좌하단: 앞으로가기, 우하단: 뒤로가기
-     * 
-     * 3. showEdgeGuideOverlay() 메서드 구현:
-     *    - 오버레이 스타일로 모서리 영역 표시
-     *    - 각 모서리에 아이콘과 설명 표시
-     *    - 사용자가 모서리 체험 후 자동으로 사라지게
-     * 
-     * 4. 체험 플로우:
-     *    연습용 버튼 클릭 성공 → 모서리 가이드 표시 → 모서리 기능 체험 → 완료
-     * 
-     * 5. 현재 준비된 과정:
-     *    - 연습용 버튼 추가 ✅
-     *    - 응시 클릭 체험 가이드 ✅
-     *    - 모서리 기능 TODO 주석 추가 ✅
+     * 🎯 모서리 기능 맵핑:
+     * - 상단: 🔽 아래로 스크롤
+     * - 하단: 🔼 위로 스크롤  
+     * - 좌상단: 📱 네비게이션 메뉴
+     * - 우상단: ⚙️ 시스템 메뉴
+     * - 좌하단: ➡️ 앞으로가기 스와이프
+     * - 우하단: ⬅️ 뒤로가기 스와이프
      * 
      * ================================================================================================
      */
@@ -213,12 +211,19 @@ public class MainActivity extends AppCompatActivity {
                 // 🆕 연습용 버튼 클릭 성공!
                 Log.d("MainActivity", "응시 클릭 연습 성공!");
                 showToast("🎉 성공! 응시 클릭이 작동했어요!", true);
+                
+                // 💫 연습용 버튼 숨기기 (성공 후 사라지게)
+                btnPractice.setVisibility(View.GONE);
+                
                 // 연습 성공 후 다음 단계 안내
                 handler.postDelayed(() -> {
-                    showToast("🎯 이제 모서리 기능을 체험해보세요!", true);
-                    // TODO: 다음 채팅에서 구현 - 모서리 기능 시각화 가이드 표시
-                    // showEdgeGuideOverlay(); // 모서리 기능 시각화 표시
-                }, 2000);
+                    showToast("🎯 이제 배경의 모서리 영역을 응시해보세요!", true);
+                }, 1500);
+                
+                // 💡 3초 후 추가 안내 메시지
+                handler.postDelayed(() -> {
+                    showToast("🟥 모서리 영역 색깔을 참고하세요!", true);
+                }, 4000);
             } else {
                 Log.w("MainActivity", "알 수 없는 버튼 클릭: " + v);
             }
@@ -271,6 +276,9 @@ public class MainActivity extends AppCompatActivity {
 
         settingsRepository = new SharedPrefsSettingsRepository(this);
         userSettings = settingsRepository.getUserSettings();
+        
+        // 🆕 WindowManager 초기화
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
         initViews();
         checkPermission();
@@ -278,6 +286,9 @@ public class MainActivity extends AppCompatActivity {
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
         startServicesAndCheckPermissions();
+        
+        // 🔄 재시작 후 접근성 설정 자동 진행
+        checkRestartFlags();
     }
 
     private void showCalibrationDialog() {
@@ -624,18 +635,8 @@ public class MainActivity extends AppCompatActivity {
             showToast("✅ 오버레이 권한 설정 완료!", true);
             updateStatusText("오버레이 권한 설정됨 ✅");
             
-            // 다음 단계로 자동 진행
-            handler.postDelayed(() -> {
-                if (!isAccessibilityServiceEnabled()) {
-                    showToast("🎮 이제 접근성 서비스만 설정하면 끝이에요!", true);
-                    handler.postDelayed(() -> {
-                        showAccessibilityPermissionDialog();
-                    }, 2000);
-                } else {
-                    // 모든 권한 완료!
-                    showAllPermissionsCompleteDialog();
-                }
-            }, 1500);
+            // 🔄 오버레이 권한 허용 후 앱 재시작으로 커서 확실히 생성
+            restartAppAfterOverlay();
         });
     }
 
@@ -658,18 +659,18 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("🎉 설정 완료!")
                 .setMessage("모든 권한 설정이 완료되었습니다!\n\n" +
                            "🎯 이제 시선 추적을 사용해보세요:\n\n" +
-                           "📍 **응시 클릭 방법:**\n" +
+                           "📍 응시 클릭 방법:\n" +
                            "• 원하는 위치를 3초간 응시하세요\n" +
                            "• 진행률 원이 채워지면 자동 클릭!\n" +
                            "• 커서 주변의 '●' 표시가 진행률 표시\n\n" +
-                           "📍 **화면 가장자리 기능:**\n" +
+                           "📍 화면 가장자리 기능:\n" +
                            "• 🔝 상단 응시 → 아래로 스크롤\n" +
                            "• 🔽 하단 응시 → 위로 스크롤\n" +
                            "• 📱 좌상단 응시 → 네비게이션 메뉴\n" +
                            "• ⚙️ 우상단 응시 → 시스템 메뉴\n" +
                            "• ⬅️ 우하단 응시 → 뒤로가기 스와이프\n" +
                            "• ➡️ 좌하단 응시 → 앞으로가기 스와이프\n\n" +
-                           "💡 **팁:** 먼저 '정밀 보정'을 하면 더 정확해져요!")
+                           "💡 팁: 먼저 '정밀 보정'을 하면 더 정확해져요!")
                 .setPositiveButton("🎯 정밀 보정 먼저", (dialog, which) -> {
                     showCalibrationDialog();
                 })
@@ -730,18 +731,18 @@ public class MainActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("🎮 빠른 체험 가이드")
                 .setMessage("지금 바로 시선 추적을 체험해보세요!\n\n" +
-                           "📍 **추천 체험 순서:**\n\n" +
-                           "1️⃣ **응시 클릭 연습**\n" +
+                           "📍 추천 체험 순서:\n\n" +
+                           "1️⃣ 응시 클릭 연습\n" +
                            "• 이 대화상자를 닫으면 '연습용' 버튼이 나타납니다\n" +
                            "• 그 버튼을 3초간 응시해보세요\n" +
                            "• 원형 진행률 표시가 채워지는 걸 지켜보세요\n\n" +
-                           "2️⃣ **스크롤 체험**\n" +
+                           "2️⃣ 스크롤 체험\n" +
                            "• 화면 맨 상단을 3초간 응시 → 아래로 스크롤\n" +
                            "• 화면 맨 하단을 3초간 응시 → 위로 스크롤\n\n" +
-                           "3️⃣ **메뉴 체험**\n" +
+                           "3️⃣ 메뉴 체험\n" +
                            "• 화면 좌상단 모서리 응시 → 네비게이션 메뉴\n" +
                            "• 화면 우상단 모서리 응시 → 시스템 메뉴\n\n" +
-                           "💡 **알림:** 첫 사용이라 약간 부정확할 수 있어요. " +
+                           "💡 알림: 첫 사용이라 약간 부정확할 수 있어요. " +
                            "더 정확한 사용을 원하면 '정밀 보정'을 강력 추천합니다!")
                 .setPositiveButton("🎯 이해했어요, 체험하기!", (dialog, which) -> {
                     // 🆕 연습용 버튼 보이기
@@ -768,12 +769,10 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQ_OVERLAY_PERMISSION) {
             if (Settings.canDrawOverlays(this)) {
                 showToast("오버레이 권한 허용됨", true);
-                if (!isAccessibilityServiceEnabled()) {
-                    showAccessibilityPermissionDialog();
-                }
-
-                Intent serviceIntent = new Intent(this, GazeTrackingService.class);
-                startForegroundService(serviceIntent);
+                
+                // 🔄 오버레이 권한 허용 후 앱 재시작으로 커서 확실히 생성
+                restartAppAfterOverlay();
+                
             } else {
                 showToast("오버레이 권한이 필요합니다", false);
                 updateStatusText("오버레이 권한 필요 ⚠️");
@@ -1131,6 +1130,77 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    
+    // 🎯 모서리 기능 시각화 가이드 표시
+    private void showEdgeGuideOverlay() {
+        if (!Settings.canDrawOverlays(this)) {
+            showToast("오버레이 권한이 필요합니다", false);
+            return;
+        }
+        
+        if (isEdgeGuideShowing) {
+            Log.d("MainActivity", "모서리 가이드가 이미 표시 중입니다");
+            return;
+        }
+        
+        try {
+            // 레이아웃 인플레이션
+            LayoutInflater inflater = LayoutInflater.from(this);
+            edgeGuideOverlay = inflater.inflate(R.layout.overlay_edge_guide, null);
+            
+            // WindowManager.LayoutParams 설정
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                android.graphics.PixelFormat.TRANSLUCENT
+            );
+            
+            // 터치 이벤트로 오버레이 닫기
+            edgeGuideOverlay.setOnClickListener(v -> {
+                hideEdgeGuideOverlay();
+                showToast("✅ 모서리 가이드를 닫았습니다. 이제 실제로 체험해보세요!", true);
+            });
+            
+            // 오버레이 추가
+            windowManager.addView(edgeGuideOverlay, params);
+            isEdgeGuideShowing = true;
+            
+            Log.d("MainActivity", "모서리 가이드 오버레이 표시 완료");
+            showToast("🎯 모서리 가이드가 표시되었습니다. 터치하면 닫힙니다", true);
+            
+            // 10초 후 자동으로 닫기
+            handler.postDelayed(() -> {
+                if (isEdgeGuideShowing) {
+                    hideEdgeGuideOverlay();
+                    showToast("💡 이제 실제 모서리를 응시해보세요!", true);
+                }
+            }, 10000);
+            
+        } catch (Exception e) {
+            Log.e("MainActivity", "오버레이 표시 중 오류: " + e.getMessage(), e);
+            showToast("오버레이 표시 오류", false);
+        }
+    }
+    
+    // 🚫 모서리 가이드 오버레이 숨기기
+    private void hideEdgeGuideOverlay() {
+        if (!isEdgeGuideShowing || edgeGuideOverlay == null) {
+            return;
+        }
+        
+        try {
+            windowManager.removeView(edgeGuideOverlay);
+            edgeGuideOverlay = null;
+            isEdgeGuideShowing = false;
+            Log.d("MainActivity", "모서리 가이드 오버레이 숨김 완료");
+        } catch (Exception e) {
+            Log.e("MainActivity", "오버레이 숨김 중 오류: " + e.getMessage(), e);
+        }
+    }
 
     @Override
     protected void onDestroy() {
@@ -1140,10 +1210,102 @@ public class MainActivity extends AppCompatActivity {
         stopOverlayPermissionMonitoring();
         stopAccessibilityPermissionMonitoring();
         
+        // 🆕 모서리 가이드 오버레이 정리
+        hideEdgeGuideOverlay();
+        
         if (gazeTracker != null) {
             gazeTracker.stopTracking();
         }
         backgroundThread.quitSafely();
         instance = null;
+    }
+    
+    // 🔄 오버레이 권한 허용 후 앱 재시작으로 커서 확실히 생성
+    private void restartAppAfterOverlay() {
+        // 사용자에게 재시작 알림
+        new AlertDialog.Builder(this)
+                .setTitle("🎯 오버레이 권한 설정 완료!")
+                .setMessage("시선 커서를 활성화하기 위해 앱을 재시작합니다.\n\n" +
+                           "재시작 후 접근성 서비스 설정을 진행합니다.")
+                .setPositiveButton("🔄 재시작", (dialog, which) -> {
+                    performAppRestart();
+                })
+                .setCancelable(false)
+                .show();
+    }
+    
+    // 🚀 앱 재시작 수행
+    private void performAppRestart() {
+        try {
+            // 1. 재시작 중임을 알리는 토스트
+            showToast("🔄 앱을 재시작합니다...", true);
+            
+            // 2. 짧은 지연 후 재시작 (사용자가 메시지를 볼 수 있도록)
+            handler.postDelayed(() -> {
+                try {
+                    // 3. 새로운 인텐트 생성
+                    Intent restartIntent = new Intent(this, MainActivity.class);
+                    restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    
+                    // 4. 재시작 후 접근성 설정 플래그 추가
+                    restartIntent.putExtra("SHOW_ACCESSIBILITY_SETUP", true);
+                    
+                    // 5. 재시작 실행
+                    startActivity(restartIntent);
+                    
+                    // 6. 현재 액티비티 종료
+                    finishAffinity();
+                    
+                    // 7. 완전한 종료를 위해 프로세스 종료
+                    System.exit(0);
+                    
+                } catch (Exception e) {
+                    Log.e("MainActivity", "앱 재시작 오류: " + e.getMessage(), e);
+                    // 재시작 실패 시 폴백 방식
+                    showToast("재시작에 실패했습니다. 수동으로 재시작해주세요.", false);
+                }
+            }, 1500); // 1.5초 후 재시작
+            
+        } catch (Exception e) {
+            Log.e("MainActivity", "재시작 준비 오류: " + e.getMessage(), e);
+            showToast("재시작 준비 오류. 수동 재시작 필요.", false);
+        }
+    }
+    
+    // 🔄 재시작 후 설정 플래그 확인 및 자동 진행
+    private void checkRestartFlags() {
+        try {
+            Intent intent = getIntent();
+            if (intent != null && intent.getBooleanExtra("SHOW_ACCESSIBILITY_SETUP", false)) {
+                Log.d("MainActivity", "재시작 후 접근성 설정 플래그 감지");
+                
+                // 재시작 완료 메시지 표시
+                showToast("🎉 재시작 완료! 시선 커서가 활성화되었습니다.", true);
+                
+                // 3초 후 접근성 설정 진행 (사용자가 메시지를 확인할 시간)
+                handler.postDelayed(() -> {
+                    if (!isAccessibilityServiceEnabled()) {
+                        showToast("🎮 마지막 단계: 접근성 서비스 설정", true);
+                        
+                        handler.postDelayed(() -> {
+                            showAccessibilityPermissionDialog();
+                        }, 2000); // 2초 후 다이얼로그 표시
+                        
+                    } else {
+                        // 이미 접근성 서비스가 활성화된 경우
+                        showToast("✅ 모든 설정이 완료되었습니다!", true);
+                        
+                        handler.postDelayed(() -> {
+                            showAllPermissionsCompleteDialog();
+                        }, 2000);
+                    }
+                }, 3000); // 3초 후 진행
+                
+                // 플래그 제거 (중복 실행 방지)
+                intent.removeExtra("SHOW_ACCESSIBILITY_SETUP");
+            }
+        } catch (Exception e) {
+            Log.e("MainActivity", "재시작 플래그 확인 오류: " + e.getMessage(), e);
+        }
     }
 }
