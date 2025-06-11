@@ -14,7 +14,7 @@ import camp.visual.eyedid.gazetracker.constant.GazeTrackerOptions;
 
 public class EyedidTrackingRepository implements EyeTrackingRepository {
     private static final String TAG = "EyedidTracking";
-    private static final String LICENSE_KEY = "dev_plnp4o1ya7d0tif2rmgko169l1z4jnali2q4f63f";
+    private static final String LICENSE_KEY = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
 
     private GazeTracker gazeTracker;
     private int currentFPS = 30; // 기본 FPS
