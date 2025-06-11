@@ -36,6 +36,19 @@
         android:text="설정"
         android:layout_marginTop="8dp" />
 
+    <!-- 🆕 연습용 버튼 (응시 클릭 체험용) -->
+    <Button
+        android:id="@+id/btn_practice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="👆 응시 클릭 연습용"
+        android:textSize="14sp"
+        android:padding="10dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#FF9800"
+        android:textColor="@android:color/white"
+        android:visibility="gone" />
+
     <!-- 🆕 앱 종료 버튼 추가 -->
     <Button
         android:id="@+id/btn_exit"
