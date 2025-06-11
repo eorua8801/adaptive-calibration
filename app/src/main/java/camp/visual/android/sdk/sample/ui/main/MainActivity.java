@@ -744,7 +744,7 @@ public class MainActivity extends AppCompatActivity {
                            "• 화면 우상단 모서리 응시 → 시스템 메뉴\n\n" +
                            "💡 알림: 첫 사용이라 약간 부정확할 수 있어요. " +
                            "더 정확한 사용을 원하면 '정밀 보정'을 강력 추천합니다!")
-                .setPositiveButton("🎯 이해했어요, 체험하기!", (dialog, which) -> {
+                .setPositiveButton("✅ 이해했어요, 체험하기!", (dialog, which) -> {
                     // 🆕 연습용 버튼 보이기
                     if (btnPractice != null) {
                         btnPractice.setVisibility(View.VISIBLE);
