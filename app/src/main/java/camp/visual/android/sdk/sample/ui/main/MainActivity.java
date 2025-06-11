@@ -327,17 +327,40 @@ public class MainActivity extends AppCompatActivity {
 
     private void showOverlayPermissionDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("화면 오버레이 권한 필요")
-                .setMessage("시선 커서를 표시하기 위해 권한이 필요합니다.\n\n" +
-                        "설정에서 'EyedidSampleApp'을 찾아 허용해주세요.")
-                .setPositiveButton("설정으로 이동", (dialog, which) -> {
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:" + getPackageName()));
-                    startActivityForResult(intent, REQ_OVERLAY_PERMISSION);
+                .setTitle("🎯 시선 커서 표시 권한 설정")
+                .setMessage("시선을 따라 움직이는 커서를 표시하기 위해 권한이 필요합니다.\n\n" +
+                        "📋 다음 화면에서 할 일:\n" +
+                        "1️⃣ 'EyedidSampleApp' 확인 (이미 선택됨)\n" +
+                        "2️⃣ '다른 앱 위에 표시' 토글 ON\n" +
+                        "3️⃣ 뒤로가기 버튼으로 앱 복귀\n\n" +
+                        "💡 이 설정은 한 번만 하면 계속 유지됩니다!")
+                .setPositiveButton("🔧 설정 화면으로", (dialog, which) -> {
+                    openOverlaySettings();
                 })
-                .setNegativeButton("나중에", null)
+                .setNegativeButton("나중에", (dialog, which) -> {
+                    updateStatusText("오버레이 권한 필요 ⚠️");
+                    Toast.makeText(this, "시선 커서 없이 사용됩니다", Toast.LENGTH_SHORT).show();
+                })
                 .setCancelable(false)
                 .show();
+    }
+
+    private void openOverlaySettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, REQ_OVERLAY_PERMISSION);
+            
+            // 🆕 권한 모니터링 시작
+            startOverlayPermissionMonitoring();
+            
+            // 🆕 복귀 유도 토스트
+            Toast.makeText(this, "🔍 권한 설정을 기다리는 중... 설정 후 뒤로가기를 눌러주세요", Toast.LENGTH_LONG).show();
+            
+        } catch (Exception e) {
+            Log.e("MainActivity", "오버레이 설정 화면 열기 실패: " + e.getMessage());
+            Toast.makeText(this, "설정 화면을 열 수 없습니다. 수동으로 설정해주세요", Toast.LENGTH_LONG).show();
+        }
     }
 
     private boolean isAccessibilityServiceEnabled() {
@@ -386,19 +409,29 @@ public class MainActivity extends AppCompatActivity {
 
     private void showAccessibilityPermissionDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("접근성 서비스 설정")
-                .setMessage("시선으로 터치하고 스크롤하기 위해 접근성 서비스가 필요합니다.\n\n" +
-                        "💡 이 설정은 한 번만 하면 계속 유지됩니다.\n\n" +
-                        "설정에서 'EyedidSampleApp'을 찾아 활성화해주세요.")
-                .setPositiveButton("설정으로 이동", (d, which) -> {
-                    openAccessibilitySettings();
+                .setTitle("🎮 시선 터치/스크롤 설정")
+                .setMessage("시선으로 클릭하고 스크롤하기 위해 접근성 서비스가 필요합니다.\n\n" +
+                        "📋 설정 화면에서 할 일:\n" +
+                        "1️⃣ 'EyedidSampleApp' 찾기\n" +
+                        "2️⃣ 앱 이름 터치\n" +
+                        "3️⃣ 상단 토글 스위치 ON\n" +
+                        "4️⃣ '확인' 버튼 클릭 (보안 경고 무시)\n" +
+                        "5️⃣ 뒤로가기로 앱 복귀\n\n" +
+                        "🔒 보안 경고가 나와도 '확인'을 눌러주세요!\n" +
+                        "💡 이 권한은 시선 터치 기능에만 사용됩니다.")
+                .setPositiveButton("🔧 설정하러 가기", (d, which) -> {
+                    openAccessibilitySettingsDirectly();
                 })
-                .setNegativeButton("나중에", null)
+                .setNegativeButton("🎯 일단 보정만", (d, which) -> {
+                    Toast.makeText(this, "시선 보정은 가능하지만, 터치/스크롤 기능은 제한됩니다", Toast.LENGTH_LONG).show();
+                    updateStatusText("접근성 서비스 권한 필요 ⚠️");
+                })
                 .show();
     }
 
-    private void openAccessibilitySettings() {
+    private void openAccessibilitySettingsDirectly() {
         try {
+            // 🎯 방법 1: 우리 앱 접근성 서비스로 바로 이동 시도
             ComponentName componentName = new ComponentName(getPackageName(),
                     MyAccessibilityService.class.getName());
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
@@ -409,25 +442,233 @@ public class MainActivity extends AppCompatActivity {
                 bundle.putString(":settings:fragment_args_key", showArgs);
                 intent.putExtra(":settings:show_fragment_args", bundle);
                 intent.putExtra(":settings:fragment_args_key", showArgs);
+                intent.putExtra(":settings:show_fragment_title", "EyedidSampleApp");
             }
 
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
-
-            showToast("'EyedidSampleApp'을 찾아 활성화해주세요", false);
+            
+            // 🆕 접근성 권한 모니터링 시작
+            startAccessibilityPermissionMonitoring();
+            
+            // 🆕 상세 가이드 표시
+            showDetailedAccessibilityGuide();
 
         } catch (Exception e) {
-            Log.d("MainActivity", "특정 서비스 설정 이동 실패, 일반 설정으로 이동");
-            try {
-                Intent fallbackIntent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(fallbackIntent);
-                showToast("접근성 설정에서 'EyedidSampleApp'을 찾아 활성화해주세요", false);
-            } catch (Exception ex) {
-                showToast("설정 화면을 열 수 없습니다", false);
-            }
+            Log.d("MainActivity", "직접 이동 실패, 대안 방법 시도: " + e.getMessage());
+            // 🆕 대안: 앱 정보 화면으로 이동
+            openAppInfoForAccessibility();
         }
     }
+
+    // 🆕 대안 방법: 앱 정보 → 접근성으로 이동
+    private void openAppInfoForAccessibility() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+            
+            Toast.makeText(this, "📱 앱 정보 → 접근성 → 서비스 사용 ON", Toast.LENGTH_LONG).show();
+            startAccessibilityPermissionMonitoring();
+            
+        } catch (Exception ex) {
+            Log.e("MainActivity", "앱 정보 화면도 열기 실패: " + ex.getMessage());
+            // 최후의 방법: 일반 접근성 설정
+            openGeneralAccessibilitySettings();
+        }
+    }
+
+    // 🆕 최후 대안: 일반 접근성 설정
+    private void openGeneralAccessibilitySettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            startActivity(intent);
+            Toast.makeText(this, "📋 설치된 앱 → EyedidSampleApp → 토글 ON", Toast.LENGTH_LONG).show();
+            startAccessibilityPermissionMonitoring();
+        } catch (Exception e) {
+            Toast.makeText(this, "설정 화면을 열 수 없습니다. 수동으로 설정해주세요", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // 🆕 더 상세한 접근성 가이드
+    private void showDetailedAccessibilityGuide() {
+        handler.postDelayed(() -> {
+            Toast.makeText(this, "🔍 접근성 서비스 활성화를 기다리는 중...", Toast.LENGTH_LONG).show();
+        }, 2000);
+        
+        handler.postDelayed(() -> {
+            Toast.makeText(this, "💡 설정 완료 후 뒤로가기를 눌러 앱으로 돌아와주세요", Toast.LENGTH_LONG).show();
+        }, 5000);
+    }
+
+    // 🆕 권한 모니터링 시스템
+    private Runnable overlayPermissionMonitor;
+    private Runnable accessibilityPermissionMonitor;
+    private boolean isMonitoringOverlay = false;
+    private boolean isMonitoringAccessibility = false;
+    private int overlayCheckCount = 0;
+    private int accessibilityCheckCount = 0;
+    private static final int MAX_MONITOR_CHECKS = 60; // 5분간 모니터링
+
+    // 🆕 오버레이 권한 모니터링 시작
+    private void startOverlayPermissionMonitoring() {
+        if (isMonitoringOverlay) return;
+        
+        isMonitoringOverlay = true;
+        overlayCheckCount = 0;
+        
+        overlayPermissionMonitor = new Runnable() {
+            @Override
+            public void run() {
+                if (overlayCheckCount >= MAX_MONITOR_CHECKS) {
+                    stopOverlayPermissionMonitoring();
+                    return;
+                }
+                
+                overlayCheckCount++;
+                
+                if (Settings.canDrawOverlays(MainActivity.this)) {
+                    // 🎉 오버레이 권한 설정 완료!
+                    onOverlayPermissionGranted();
+                    stopOverlayPermissionMonitoring();
+                } else {
+                    // 5초 후 다시 체크
+                    handler.postDelayed(this, 5000);
+                }
+            }
+        };
+        
+        handler.postDelayed(overlayPermissionMonitor, 3000); // 3초 후 시작
+    }
+
+    // 🆕 접근성 권한 모니터링 시작
+    private void startAccessibilityPermissionMonitoring() {
+        if (isMonitoringAccessibility) return;
+        
+        isMonitoringAccessibility = true;
+        accessibilityCheckCount = 0;
+        
+        accessibilityPermissionMonitor = new Runnable() {
+            @Override
+            public void run() {
+                if (accessibilityCheckCount >= MAX_MONITOR_CHECKS) {
+                    stopAccessibilityPermissionMonitoring();
+                    return;
+                }
+                
+                accessibilityCheckCount++;
+                
+                if (isAccessibilityServiceEnabled()) {
+                    // 🎉 접근성 서비스 활성화 완료!
+                    onAccessibilityPermissionGranted();
+                    stopAccessibilityPermissionMonitoring();
+                } else {
+                    // 5초 후 다시 체크
+                    handler.postDelayed(this, 5000);
+                }
+            }
+        };
+        
+        handler.postDelayed(accessibilityPermissionMonitor, 3000); // 3초 후 시작
+    }
+
+    // 🆕 오버레이 권한 설정 완료 처리
+    private void onOverlayPermissionGranted() {
+        runOnUiThread(() -> {
+            showToast("✅ 오버레이 권한 설정 완료!", true);
+            updateStatusText("오버레이 권한 설정됨 ✅");
+            
+            // 다음 단계로 자동 진행
+            handler.postDelayed(() -> {
+                if (!isAccessibilityServiceEnabled()) {
+                    showToast("🎮 이제 접근성 서비스만 설정하면 끝이에요!", true);
+                    handler.postDelayed(() -> {
+                        showAccessibilityPermissionDialog();
+                    }, 2000);
+                } else {
+                    // 모든 권한 완료!
+                    showAllPermissionsCompleteDialog();
+                }
+            }, 1500);
+        });
+    }
+
+    // 🆕 접근성 권한 설정 완료 처리
+    private void onAccessibilityPermissionGranted() {
+        runOnUiThread(() -> {
+            showToast("✅ 접근성 서비스 활성화 완료!", true);
+            updateStatusText("모든 권한 설정 완료 ✅");
+            
+            // 모든 설정 완료!
+            handler.postDelayed(() -> {
+                showAllPermissionsCompleteDialog();
+            }, 1500);
+        });
+    }
+
+    // 🆕 모든 권한 설정 완료 다이얼로그
+    private void showAllPermissionsCompleteDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("🎉 설정 완료!")
+                .setMessage("모든 권한 설정이 완료되었습니다!\n\n" +
+                           "🎯 이제 다음 단계를 진행해보세요:\n" +
+                           "1️⃣ 정밀 보정으로 시선 추적 정확도 최적화\n" +
+                           "2️⃣ 시선으로 화면 터치해보기\n" +
+                           "3️⃣ 화면 가장자리 응시로 스크롤/메뉴 사용\n\n" +
+                           "💡 언제든 '시선 보정' 버튼으로 정확도를 개선할 수 있어요!")
+                .setPositiveButton("🎯 정밀 보정 시작", (dialog, which) -> {
+                    showCalibrationDialog();
+                })
+                .setNegativeButton("나중에 하기", (dialog, which) -> {
+                    showToast("모든 기능이 준비되었습니다! 언제든 시선 보정을 해보세요", true);
+                })
+                .show();
+    }
+
+    // 🆕 권한 모니터링 중지 메서드들
+    private void stopOverlayPermissionMonitoring() {
+        isMonitoringOverlay = false;
+        if (overlayPermissionMonitor != null) {
+            handler.removeCallbacks(overlayPermissionMonitor);
+        }
+    }
+
+    private void stopAccessibilityPermissionMonitoring() {
+        isMonitoringAccessibility = false;
+        if (accessibilityPermissionMonitor != null) {
+            handler.removeCallbacks(accessibilityPermissionMonitor);
+        }
+    }
+
+    // 🆕 모든 권한 상태 체크 및 자동 진행
+    private void checkAllPermissionsAndProceed() {
+        boolean hasOverlay = Settings.canDrawOverlays(this);
+        boolean hasAccessibility = isAccessibilityServiceEnabled();
+        
+        Log.d("MainActivity", "권한 상태 체크 - 오버레이: " + hasOverlay + ", 접근성: " + hasAccessibility);
+        
+        if (hasOverlay && hasAccessibility) {
+            // 🎉 모든 권한 완료!
+            updateStatusText("모든 권한 설정 완료 ✅");
+            if (!hasShownWelcomeDialog) {
+                hasShownWelcomeDialog = true;
+                showAllPermissionsCompleteDialog();
+            }
+        } else if (hasOverlay && !hasAccessibility) {
+            // 오버레이는 됐고, 접근성만 남음
+            updateStatusText("접근성 서비스 권한 필요 ⚠️");
+            showToast("✅ 오버레이 권한 완료! 이제 접근성 서비스만 설정하면 끝이에요", true);
+        } else if (!hasOverlay && hasAccessibility) {
+            // 접근성은 됐고, 오버레이만 남음
+            updateStatusText("오버레이 권한 필요 ⚠️");
+            showToast("✅ 접근성 서비스 완료! 이제 오버레이 권한만 설정하면 끝이에요", true);
+        } else {
+            // 둘 다 안됨
+            updateStatusText("권한 설정 필요 ⚠️");
+        }
+    }
+
+    // 🆕 환영 다이얼로그 표시 여부 플래그
+    private boolean hasShownWelcomeDialog = false;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -453,6 +694,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         userSettings = settingsRepository.getUserSettings();
+
+        // 🆕 권한 설정에서 돌아왔는지 확인하고 자동 진행
+        checkAllPermissionsAndProceed();
 
         if (!Settings.canDrawOverlays(this)) {
             updateStatusText("오버레이 권한 필요 ⚠️");
@@ -788,6 +1032,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        
+        // 🆕 권한 모니터링 중지
+        stopOverlayPermissionMonitoring();
+        stopAccessibilityPermissionMonitoring();
+        
         if (gazeTracker != null) {
             gazeTracker.stopTracking();
         }
