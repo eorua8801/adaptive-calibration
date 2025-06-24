@@ -21,7 +21,7 @@ jobs:
     - name: ☕ JDK 11 설정
       uses: actions/setup-java@v4
       with:
-        java-version: '11'
+        java-version: '17'
         distribution: 'temurin'
         
     - name: 🗂️ Gradle 캐시
