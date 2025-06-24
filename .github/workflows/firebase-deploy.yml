@@ -18,7 +18,7 @@ jobs:
     - name: 📥 코드 체크아웃
       uses: actions/checkout@v4
     
-    - name: ☕ JDK 11 설정
+    - name: ☕ JDK 17 설정
       uses: actions/setup-java@v4
       with:
         java-version: '17'
