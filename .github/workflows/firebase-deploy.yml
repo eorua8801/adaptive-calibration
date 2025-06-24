@@ -32,25 +32,37 @@ jobs:
         echo "PATH에서 Java 경로:"
         which java
         
-    - name: 🗂️ Gradle 캐시 (Java 17용)
+    - name: 🛡️ JAVA_HOME 강제 설정
+      run: |
+        echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+        echo "$JAVA_HOME/bin" >> $GITHUB_PATH
+        
+    - name: 🗂️ Gradle 캐시 초기화
       uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-java17-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        key: ${{ runner.os }}-gradle-java17-v2-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-java17-
+          ${{ runner.os }}-gradle-java17-v2-
           
     - name: 🔧 Gradlew 실행 권한 부여
       run: chmod +x gradlew
       
-    - name: 🧹 Gradle Clean (필요시)
-      run: ./gradlew clean
+    - name: 🧹 Gradle Daemon 종료 (캐시 초기화)
+      run: ./gradlew --stop || true
       
-    - name: 🏗️ Debug APK 빌드
-      run: ./gradlew assembleDebug
+    - name: 🔥 강제 Clean 빌드
+      run: ./gradlew clean --no-daemon
+      env:
+        JAVA_HOME: ${{ env.JAVA_HOME }}
       
+    - name: 🏗️ Debug APK 빌드 (Java 17 강제)
+      run: ./gradlew assembleDebug --no-daemon --stacktrace
+      env:
+        JAVA_HOME: ${{ env.JAVA_HOME }}
+        
     - name: 📊 APK 정보 출력
       run: |
         echo "📱 생성된 APK 정보:"
