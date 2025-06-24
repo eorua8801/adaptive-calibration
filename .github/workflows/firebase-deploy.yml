@@ -1,0 +1,83 @@
+name: 🔥 Firebase App Distribution
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: '릴리즈 노트 (선택사항)'
+        required: false
+        default: '새로운 빌드 배포'
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 코드 체크아웃
+      uses: actions/checkout@v4
+    
+    - name: ☕ JDK 11 설정
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: 🗂️ Gradle 캐시
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: 🔧 Gradlew 실행 권한 부여
+      run: chmod +x gradlew
+      
+    - name: 🏗️ Debug APK 빌드
+      run: ./gradlew assembleDebug
+      
+    - name: 📊 APK 정보 출력
+      run: |
+        echo "📱 생성된 APK 정보:"
+        ls -la app/build/outputs/apk/debug/
+        du -h app/build/outputs/apk/debug/app-debug.apk
+      
+    - name: 🚀 Firebase App Distribution 배포
+      uses: wzieba/Firebase-Distribution-Github-Action@v1.7.0
+      with:
+        appId: ${{ secrets.FIREBASE_APP_ID }}
+        serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        groups: testers
+        file: app/build/outputs/apk/debug/app-debug.apk
+        releaseNotes: |
+          🚀 Adaptive Calibration 새 버전이 준비되었습니다!
+          
+          📋 빌드 정보:
+          • 커밋: ${{ github.sha }}
+          • 브랜치: ${{ github.ref_name }}
+          • 액터: ${{ github.actor }}
+          • 빌드 시간: ${{ github.event.head_commit.timestamp }}
+          
+          ${{ github.event.inputs.release_notes || '🔧 최신 개발 버전' }}
+          
+          📱 설치 방법:
+          1. Firebase App Distribution 앱에서 다운로드
+          2. 또는 이메일 링크를 통해 직접 설치
+          
+          🐛 버그 리포트: https://github.com/${{ github.repository }}/issues
+          
+    - name: ✅ 배포 완료 알림
+      if: success()
+      run: |
+        echo "🎉 Firebase App Distribution 배포 성공!"
+        echo "📧 테스터들에게 알림이 전송됩니다."
+        
+    - name: ❌ 배포 실패 알림
+      if: failure()
+      run: |
+        echo "💥 Firebase App Distribution 배포 실패!"
+        echo "🔍 로그를 확인해주세요."
