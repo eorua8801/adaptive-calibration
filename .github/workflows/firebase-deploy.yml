@@ -24,6 +24,14 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
+    - name: 🔍 Java 버전 확인
+      run: |
+        echo "현재 Java 버전:"
+        java -version
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo "PATH에서 Java 경로:"
+        which java
+        
     - name: 🗂️ Gradle 캐시
       uses: actions/cache@v4
       with:
