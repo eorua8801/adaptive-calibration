@@ -32,18 +32,21 @@ jobs:
         echo "PATH에서 Java 경로:"
         which java
         
-    - name: 🗂️ Gradle 캐시
+    - name: 🗂️ Gradle 캐시 (Java 17용)
       uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        key: ${{ runner.os }}-gradle-java17-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-
+          ${{ runner.os }}-gradle-java17-
           
     - name: 🔧 Gradlew 실행 권한 부여
       run: chmod +x gradlew
+      
+    - name: 🧹 Gradle Clean (필요시)
+      run: ./gradlew clean
       
     - name: 🏗️ Debug APK 빌드
       run: ./gradlew assembleDebug
