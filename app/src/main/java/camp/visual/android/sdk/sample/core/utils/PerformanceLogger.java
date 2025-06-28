@@ -1,7 +1,6 @@
 package camp.visual.android.sdk.sample.core.utils;
 
 import android.util.Log;
-import camp.visual.android.sdk.sample.BuildConfig;
 import camp.visual.android.sdk.sample.core.constants.AppConstants;
 import camp.visual.android.sdk.sample.core.security.SecurityManager;
 
@@ -30,8 +29,10 @@ public final class PerformanceLogger {
      * 🎯 조건부 디버그 로그 (사용자 정의 간격)
      */
     public static void logIfNeeded(String tag, String message, long intervalMs) {
-        if (!BuildConfig.DEBUG) {
-            return; // 배포 버전에서는 디버그 로그 비활성화
+        // 디버그 모드 (개발 단계에서는 활성화)
+        final boolean DEBUG = true;
+        if (!DEBUG) {
+            return;
         }
         
         String key = tag + ":" + message.hashCode();
@@ -48,7 +49,8 @@ public final class PerformanceLogger {
      * 🔍 좌표 로그 (보안 적용)
      */
     public static void logCoordinates(String tag, String prefix, float x, float y) {
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             String message = prefix + ": " + SecurityManager.sanitizeCoordinates(x, y);
             logIfNeeded(tag, message);
         }
@@ -201,7 +203,8 @@ public final class PerformanceLogger {
      * 📊 로그 통계 출력
      */
     public static void printLogStatistics() {
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             int totalEntries = lastLogTimes.size();
             logImportant(AppConstants.Logging.TAG_MAIN, 
                 String.format("Log statistics: %d unique log entries tracked", totalEntries));

@@ -1,7 +1,5 @@
 package camp.visual.android.sdk.sample.core.constants;
 
-import camp.visual.android.sdk.sample.BuildConfig;
-
 /**
  * 🔒 애플리케이션 전역 상수 관리
  * - 보안 강화: 민감한 정보 분리
@@ -10,8 +8,8 @@ import camp.visual.android.sdk.sample.BuildConfig;
  */
 public final class AppConstants {
     
-    // 🔒 보안: 라이센스 키는 BuildConfig에서 관리 (gradle에서 주입)
-    public static final String EYEDID_SDK_LICENSE = BuildConfig.EYEDID_LICENSE_KEY;
+    // 🔒 보안: 라이센스 키 (실제 배포 시 보안 강화 필요)
+    public static final String EYEDID_SDK_LICENSE = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
     
     // 📱 서비스 관련 상수
     public static final String NOTIFICATION_CHANNEL_ID = "GazeTrackingServiceChannel";
@@ -81,7 +79,7 @@ public final class AppConstants {
     public static final class Network {
         public static final int CONNECTION_TIMEOUT_MS = 5000;
         public static final int READ_TIMEOUT_MS = 10000;
-        public static final String API_BASE_URL = BuildConfig.API_BASE_URL;
+        public static final String API_BASE_URL = "https://api.eyedid.ai";
     }
     
     // Private constructor to prevent instantiation

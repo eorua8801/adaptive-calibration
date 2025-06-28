@@ -1,7 +1,6 @@
 package camp.visual.android.sdk.sample.core.security;
 
 import android.util.Log;
-import camp.visual.android.sdk.sample.BuildConfig;
 import camp.visual.android.sdk.sample.core.constants.AppConstants;
 
 /**
@@ -20,28 +19,9 @@ public final class SecurityManager {
         // 🆕 유효한 EyeDID SDK 라이센스 키 사용
         String licenseKey;
         
-        // 개발 모드에서는 하드코딩된 값 사용
-        if (BuildConfig.DEBUG) {
-            // 🔥 실제 유효한 라이센스 키 (개발용)
-            licenseKey = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
-            Log.d(AppConstants.Logging.TAG_SECURITY, "개발용 라이센스 키 사용: " + licenseKey.substring(0, 10) + "...");
-        } else {
-            // 배포 버전에서는 BuildConfig에서 가져오기
-            try {
-                licenseKey = BuildConfig.EYEDID_LICENSE_KEY;
-                if (licenseKey == null || licenseKey.trim().isEmpty()) {
-                    Log.e(AppConstants.Logging.TAG_SECURITY, "BuildConfig에서 라이센스 키가 null이거나 비어있음");
-                    // 🔥 fallback으로 개발용 키 사용
-                    licenseKey = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
-                    Log.w(AppConstants.Logging.TAG_SECURITY, "Fallback 라이센스 키 사용");
-                }
-            } catch (Exception e) {
-                Log.e(AppConstants.Logging.TAG_SECURITY, "라이센스 키 로드 실패", e);
-                // 🔥 fallback으로 개발용 키 사용
-                licenseKey = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
-                Log.w(AppConstants.Logging.TAG_SECURITY, "Exception fallback 라이센스 키 사용");
-            }
-        }
+        // 유효한 EyeDID SDK 라이센스 키 사용
+        licenseKey = "dev_ktygge55mai7a041aglteb4onei9a7m9j7tcqagm";
+        Log.d(AppConstants.Logging.TAG_SECURITY, "라이센스 키 사용: " + licenseKey.substring(0, 10) + "...");
         
         // 🔥 라이센스 키 유효성 검사
         if (licenseKey == null || licenseKey.trim().isEmpty()) {
@@ -63,7 +43,8 @@ public final class SecurityManager {
      * 🔍 로그용 민감 데이터 마스킹
      */
     public static String sanitizeCoordinates(float x, float y) {
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             return String.format("(%.1f, %.1f)", x, y);
         }
         return "(***,***)";
@@ -77,7 +58,8 @@ public final class SecurityManager {
             return "****";
         }
         
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             return userId;
         }
         
@@ -88,7 +70,8 @@ public final class SecurityManager {
      * 🔍 디바이스 정보 마스킹
      */
     public static String sanitizeDeviceInfo(String deviceInfo) {
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             return deviceInfo;
         }
         
@@ -121,7 +104,8 @@ public final class SecurityManager {
      * 🔒 보안 로그 출력 (배포 버전에서는 비활성화)
      */
     public static void secureLog(String tag, String message) {
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             Log.d(tag, "[SECURE] " + message);
         }
         // 배포 버전에서는 로그 출력하지 않음
@@ -132,7 +116,8 @@ public final class SecurityManager {
      */
     public static void secureErrorLog(String tag, String message, Throwable throwable) {
         // 민감 정보가 포함될 수 있는 스택 트레이스는 디버그 모드에서만
-        if (BuildConfig.DEBUG) {
+        final boolean DEBUG = true;
+        if (DEBUG) {
             Log.e(tag, "[SECURE_ERROR] " + message, throwable);
         } else {
             Log.e(tag, "[ERROR] " + sanitizeErrorMessage(message));
@@ -175,7 +160,8 @@ public final class SecurityManager {
                 Log.i(AppConstants.Logging.TAG_SECURITY, "라이센스 키 검증 성공");
                 
                 // 2. 디버그 모드 확인
-                if (BuildConfig.DEBUG) {
+                final boolean DEBUG = true;
+                if (DEBUG) {
                     Log.w(AppConstants.Logging.TAG_SECURITY, "디버그 모드에서 실행 중 - 보안 수준이 낮아질 수 있습니다");
                 }
                 
