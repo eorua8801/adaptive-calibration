@@ -2182,6 +2182,3 @@ public class MyAccessibilityService {
 **비주얼캠프 개발팀의 추가 개발 및 확장에 활용하시기 바랍니다.**
 
 ---
-
-*Last updated: 2024년 기준*  
-*Contact: [개발자 연락처]*
