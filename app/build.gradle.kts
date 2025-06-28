@@ -45,8 +45,8 @@ android {
         buildConfig = true
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     
     // 🔧 패키징 옵션 (라이브러리 충돌 방지)
