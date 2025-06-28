@@ -1,51 +1,22 @@
 package camp.visual.android.sdk.sample.domain.calibration;
 
 import android.util.Log;
-
+import camp.visual.android.sdk.sample.core.constants.AppConstants;
+import camp.visual.android.sdk.sample.core.utils.PerformanceLogger;
 import camp.visual.android.sdk.sample.domain.model.UserSettings;
+import camp.visual.eyedid.gazetracker.constant.AccuracyCriteria;
 import camp.visual.eyedid.gazetracker.constant.CalibrationModeType;
+import camp.visual.eyedid.gazetracker.metrics.UserStatusInfo;
 
 /**
- * 🆕 적응형 캘리브레이션 관리자 (2단계) - SDK 호환성 수정
- * 사용자의 피로도와 집중도를 시뮬레이션하여
- * 최적의 캘리브레이션 타이밍을 자동 감지하고 제안하는 시스템
- *
- * Note: UserStatusInfo가 현재 SDK에서 지원되지 않으므로
- * 시뮬레이션 기반으로 구현하고 향후 SDK 업데이트 시 실제 데이터로 교체 예정
+ * 🆕 적응형 캘리브레이션 관리자 (실제 UserStatusInfo 활용)
+ * - 공식 SDK UserStatusInfo 사용
+ * - 실시간 사용자 상태 기반 최적 캘리브레이션 타이밍 감지
+ * - 피로도, 집중도, 졸음 상태 종합 분석
+ * - 성능 최적화 및 보안 강화
  */
 public class AdaptiveCalibrationManager {
-    private static final String TAG = "AdaptiveCalibration";
-
-    // 🔧 SDK 호환성: UserStatusInfo 대신 시뮬레이션 데이터 사용
-    public static class SimulatedUserStatus {
-        public final float attentionScore;      // 0.0 ~ 1.0
-        public final float drowsinessIntensity; // 0.0 ~ 1.0
-        public final boolean isDrowsy;
-        public final long timestamp;
-
-        public SimulatedUserStatus(float attention, float drowsiness, boolean drowsy) {
-            this.attentionScore = Math.max(0f, Math.min(1f, attention));
-            this.drowsinessIntensity = Math.max(0f, Math.min(1f, drowsiness));
-            this.isDrowsy = drowsy;
-            this.timestamp = System.currentTimeMillis();
-        }
-
-        // 기본 상태 (보통 집중도)
-        public static SimulatedUserStatus createDefault() {
-            return new SimulatedUserStatus(0.7f, 0.1f, false);
-        }
-
-        // 높은 집중도 상태
-        public static SimulatedUserStatus createFocused() {
-            return new SimulatedUserStatus(0.9f, 0.05f, false);
-        }
-
-        // 피로한 상태
-        public static SimulatedUserStatus createTired() {
-            return new SimulatedUserStatus(0.4f, 0.3f, true);
-        }
-    }
-
+    
     // 적응형 캘리브레이션 콜백 인터페이스
     public interface AdaptiveCalibrationCallback {
         void onOptimalCalibrationTimeDetected(CalibrationRecommendation recommendation);
@@ -56,12 +27,15 @@ public class AdaptiveCalibrationManager {
     // 캘리브레이션 추천 정보
     public static class CalibrationRecommendation {
         public final CalibrationModeType recommendedMode;
+        public final AccuracyCriteria recommendedAccuracy;
         public final int confidenceLevel; // 0-100
         public final String reason;
         public final long timestamp;
 
-        public CalibrationRecommendation(CalibrationModeType mode, int confidence, String reason) {
+        public CalibrationRecommendation(CalibrationModeType mode, AccuracyCriteria accuracy, 
+                                       int confidence, String reason) {
             this.recommendedMode = mode;
+            this.recommendedAccuracy = accuracy;
             this.confidenceLevel = confidence;
             this.reason = reason;
             this.timestamp = System.currentTimeMillis();
@@ -73,12 +47,15 @@ public class AdaptiveCalibrationManager {
         public final int qualityScore; // 0-100
         public final boolean needsRecalibration;
         public final String assessment;
+        public final AccuracyCriteria suggestedAccuracy;
         public final long timestamp;
 
-        public CalibrationQuality(int score, boolean needsRecalibration, String assessment) {
+        public CalibrationQuality(int score, boolean needsRecalibration, 
+                                String assessment, AccuracyCriteria suggestedAccuracy) {
             this.qualityScore = score;
             this.needsRecalibration = needsRecalibration;
             this.assessment = assessment;
+            this.suggestedAccuracy = suggestedAccuracy;
             this.timestamp = System.currentTimeMillis();
         }
     }
@@ -89,13 +66,16 @@ public class AdaptiveCalibrationManager {
         public final int alertnessLevel; // 0-100
         public final int attentionLevel; // 0-100
         public final String statusDescription;
+        public final CalibrationModeType suggestedMode;
         public final long timestamp;
 
-        public UserStatus(boolean isOptimal, int alertness, int attention, String description) {
+        public UserStatus(boolean isOptimal, int alertness, int attention, 
+                         String description, CalibrationModeType suggestedMode) {
             this.isOptimalForCalibration = isOptimal;
             this.alertnessLevel = alertness;
             this.attentionLevel = attention;
             this.statusDescription = description;
+            this.suggestedMode = suggestedMode;
             this.timestamp = System.currentTimeMillis();
         }
     }
@@ -109,7 +89,7 @@ public class AdaptiveCalibrationManager {
 
     // 상태 추적
     private AdaptiveCalibrationCallback callback;
-    private SimulatedUserStatus lastUserStatus;
+    private UserStatusInfo lastUserStatusInfo;
     private long lastRecommendationTime = 0;
     private long observationStartTime = 0;
     private boolean isObserving = false;
@@ -118,16 +98,11 @@ public class AdaptiveCalibrationManager {
     private float averageAttentionScore = 0.5f;
     private int optimalConditionCount = 0;
     private int totalObservationCount = 0;
-
-    // 🆕 시뮬레이션 관련
-    private boolean simulationMode = true;
-    private long lastSimulationUpdate = 0;
-    private static final long SIMULATION_UPDATE_INTERVAL = 5000; // 5초마다 업데이트
+    private long lastAnalysisTime = 0;
 
     public AdaptiveCalibrationManager() {
-        Log.d(TAG, "적응형 캘리브레이션 관리자 초기화 (시뮬레이션 모드)");
-        // 기본 상태로 초기화
-        lastUserStatus = SimulatedUserStatus.createDefault();
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            "실제 UserStatusInfo 기반 적응형 캘리브레이션 관리자 초기화");
     }
 
     public void setCallback(AdaptiveCalibrationCallback callback) {
@@ -135,59 +110,17 @@ public class AdaptiveCalibrationManager {
     }
 
     /**
-     * 🔧 SDK 호환성: 시뮬레이션된 사용자 상태 분석
-     * 실제 UserStatusInfo 대신 시뮬레이션 데이터 사용
+     * 🆕 실제 UserStatusInfo 분석
+     * 공식 SDK에서 제공하는 실제 사용자 상태 데이터 활용
      */
-    public void simulateUserStatusUpdate() {
-        if (!enabled || !simulationMode) return;
+    public void analyzeUserStatus(UserStatusInfo userStatusInfo) {
+        if (!enabled || userStatusInfo == null) return;
 
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastSimulationUpdate < SIMULATION_UPDATE_INTERVAL) {
-            return; // 아직 업데이트 시간이 아님
-        }
-
-        // 시뮬레이션된 사용자 상태 생성
-        SimulatedUserStatus simulatedStatus = generateSimulatedUserStatus();
-        analyzeUserStatus(simulatedStatus);
-
-        lastSimulationUpdate = currentTime;
-    }
-
-    /**
-     * 🆕 시뮬레이션된 사용자 상태 생성
-     */
-    private SimulatedUserStatus generateSimulatedUserStatus() {
-        // 시간에 따른 동적 상태 변화 시뮬레이션
-        long currentTime = System.currentTimeMillis();
-        float timeBasedVariation = (float) Math.sin(currentTime / 30000.0) * 0.2f; // 30초 주기
-
-        // 기본 집중도에 시간 변화 적용
-        float baseAttention = 0.7f + timeBasedVariation;
-        float baseDrowsiness = 0.1f - (timeBasedVariation * 0.5f);
-
-        // 간헐적으로 좋은 조건 생성 (20% 확률)
-        if (Math.random() < 0.2) {
-            return SimulatedUserStatus.createFocused();
-        }
-        // 간헐적으로 피로한 조건 생성 (10% 확률)
-        else if (Math.random() < 0.1) {
-            return SimulatedUserStatus.createTired();
-        }
-
-        boolean isDrowsy = baseDrowsiness > 0.2f;
-        return new SimulatedUserStatus(baseAttention, baseDrowsiness, isDrowsy);
-    }
-
-    /**
-     * 🆕 사용자 상태 분석 (시뮬레이션 또는 실제 데이터)
-     */
-    public void analyzeUserStatus(SimulatedUserStatus userStatus) {
-        if (!enabled || userStatus == null) return;
-
-        lastUserStatus = userStatus;
+        lastUserStatusInfo = userStatusInfo;
+        lastAnalysisTime = System.currentTimeMillis();
 
         // 사용자 상태 분석
-        UserStatus status = evaluateUserStatus(userStatus);
+        UserStatus status = evaluateUserStatus(userStatusInfo);
 
         // 콜백 호출
         if (callback != null) {
@@ -196,59 +129,84 @@ public class AdaptiveCalibrationManager {
 
         // 최적 조건 감지 로직
         if (status.isOptimalForCalibration) {
-            handleOptimalConditionDetected(userStatus);
+            handleOptimalConditionDetected(userStatusInfo);
+        } else if (isObserving) {
+            // 최적 조건이 아니면 관찰 중단
+            resetObservation();
         }
 
         // 통계 업데이트
-        updateStatistics(userStatus);
+        updateStatistics(userStatusInfo);
 
-        Log.d(TAG, String.format("사용자 상태 분석: 집중도 %.1f%%, 각성도 %.1f%%, 최적조건: %s",
-                status.attentionLevel / 100.0f * 100,
-                status.alertnessLevel / 100.0f * 100,
-                status.isOptimalForCalibration ? "예" : "아니오"));
+        // 성능 로깅
+        PerformanceLogger.GazeLogger.logTrackingState(
+            "AdaptiveCalibration",
+            String.format("Attention:%.1f%%, Drowsy:%s, Optimal:%s",
+                userStatusInfo.attentionScore * 100,
+                userStatusInfo.isDrowsy ? "Y" : "N",
+                status.isOptimalForCalibration ? "Y" : "N")
+        );
     }
 
     /**
-     * 🆕 사용자 상태 종합 평가
+     * 🆕 실제 UserStatusInfo 기반 사용자 상태 종합 평가
      */
-    private UserStatus evaluateUserStatus(SimulatedUserStatus userStatus) {
+    private UserStatus evaluateUserStatus(UserStatusInfo userStatusInfo) {
         // 집중도 점수 계산 (0-100)
-        int attentionLevel = Math.round(userStatus.attentionScore * 100);
+        int attentionLevel = Math.round(userStatusInfo.attentionScore * 100);
 
         // 각성도 점수 계산 (졸음의 반대)
-        int alertnessLevel = Math.round((1.0f - userStatus.drowsinessIntensity) * 100);
+        int alertnessLevel = Math.round((1.0f - userStatusInfo.drowsinessIntensity) * 100);
 
         // 최적 조건 판단
-        boolean isOptimal = isOptimalCalibrationCondition(userStatus);
+        boolean isOptimal = isOptimalCalibrationCondition(userStatusInfo);
 
         // 상태 설명 생성
-        String description = generateStatusDescription(attentionLevel, alertnessLevel, userStatus.isDrowsy);
+        String description = generateStatusDescription(attentionLevel, alertnessLevel, userStatusInfo.isDrowsy);
 
-        return new UserStatus(isOptimal, alertnessLevel, attentionLevel, description);
+        // 추천 캘리브레이션 모드 결정
+        CalibrationModeType suggestedMode = determineSuggestedCalibrationMode(userStatusInfo);
+
+        return new UserStatus(isOptimal, alertnessLevel, attentionLevel, description, suggestedMode);
     }
 
     /**
-     * 🆕 최적 캘리브레이션 조건 판단
+     * 🆕 최적 캘리브레이션 조건 판단 (실제 데이터 기반)
      */
-    private boolean isOptimalCalibrationCondition(SimulatedUserStatus userStatus) {
-        boolean highAttention = userStatus.attentionScore >= attentionThreshold;
-        boolean lowDrowsiness = userStatus.drowsinessIntensity <= drowsinessThreshold;
-        boolean notDrowsy = !userStatus.isDrowsy;
+    private boolean isOptimalCalibrationCondition(UserStatusInfo userStatusInfo) {
+        boolean highAttention = userStatusInfo.attentionScore >= attentionThreshold;
+        boolean lowDrowsiness = userStatusInfo.drowsinessIntensity <= drowsinessThreshold;
+        boolean notDrowsy = !userStatusInfo.isDrowsy;
         boolean cooldownPassed = (System.currentTimeMillis() - lastRecommendationTime) >= cooldownPeriod;
 
         return highAttention && lowDrowsiness && notDrowsy && cooldownPassed;
     }
 
     /**
+     * 🆕 캘리브레이션 모드 추천 (실제 데이터 기반)
+     */
+    private CalibrationModeType determineSuggestedCalibrationMode(UserStatusInfo userStatusInfo) {
+        if (userStatusInfo.isDrowsy || userStatusInfo.attentionScore < 0.5f) {
+            return CalibrationModeType.ONE_POINT; // 간단한 1포인트
+        } else if (userStatusInfo.attentionScore >= 0.9f && userStatusInfo.drowsinessIntensity <= 0.05f) {
+            return CalibrationModeType.FIVE_POINT; // 정밀한 5포인트
+        } else {
+            return CalibrationModeType.DEFAULT; // 기본 모드
+        }
+    }
+
+    /**
      * 🆕 최적 조건 감지 시 처리
      */
-    private void handleOptimalConditionDetected(SimulatedUserStatus userStatus) {
+    private void handleOptimalConditionDetected(UserStatusInfo userStatusInfo) {
         if (!isObserving) {
             // 관찰 시작
             observationStartTime = System.currentTimeMillis();
             isObserving = true;
             optimalConditionCount = 1;
-            Log.d(TAG, "최적 조건 관찰 시작");
+            
+            PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+                "최적 조건 관찰 시작 - 집중도: " + (userStatusInfo.attentionScore * 100) + "%");
             return;
         }
 
@@ -258,72 +216,85 @@ public class AdaptiveCalibrationManager {
 
         if (observationTime >= minimumObservationTime) {
             // 충분한 관찰 시간 후 추천 생성
-            CalibrationRecommendation recommendation = generateCalibrationRecommendation(userStatus);
+            CalibrationRecommendation recommendation = generateCalibrationRecommendation(userStatusInfo);
 
             if (callback != null) {
                 callback.onOptimalCalibrationTimeDetected(recommendation);
             }
 
             // 상태 리셋
-            isObserving = false;
+            resetObservation();
             lastRecommendationTime = System.currentTimeMillis();
 
-            Log.d(TAG, String.format("캘리브레이션 추천 생성: %s (신뢰도: %d%%)",
-                    recommendation.recommendedMode, recommendation.confidenceLevel));
+            PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+                String.format("캘리브레이션 추천: %s (신뢰도: %d%%, 정확도: %s)",
+                    recommendation.recommendedMode, recommendation.confidenceLevel, 
+                    recommendation.recommendedAccuracy));
         }
     }
 
     /**
-     * 🆕 캘리브레이션 추천 생성 (SDK 호환 모드)
+     * 🆕 캘리브레이션 추천 생성 (실제 데이터 기반)
      */
-    private CalibrationRecommendation generateCalibrationRecommendation(SimulatedUserStatus userStatus) {
+    private CalibrationRecommendation generateCalibrationRecommendation(UserStatusInfo userStatusInfo) {
         CalibrationModeType recommendedMode;
+        AccuracyCriteria recommendedAccuracy;
         int confidenceLevel;
         String reason;
 
-        // 🔧 SDK 호환성: 기존 CalibrationModeType 사용
-        if (userStatus.attentionScore >= 0.9f && userStatus.drowsinessIntensity <= 0.05f) {
-            // 매우 높은 집중도: 5포인트 캘리브레이션 추천 (SIX_POINT 대신)
+        if (userStatusInfo.attentionScore >= 0.9f && userStatusInfo.drowsinessIntensity <= 0.05f) {
+            // 매우 높은 집중도: 고정밀도 캘리브레이션
             recommendedMode = CalibrationModeType.FIVE_POINT;
+            recommendedAccuracy = AccuracyCriteria.HIGH;
             confidenceLevel = 95;
-            reason = "매우 높은 집중도와 각성 상태로 정밀 캘리브레이션에 최적";
-        } else if (userStatus.attentionScore >= 0.8f && userStatus.drowsinessIntensity <= 0.1f) {
-            // 높은 집중도: 표준 캘리브레이션 추천
+            reason = "매우 높은 집중도와 각성 상태로 고정밀도 캘리브레이션에 최적";
+        } else if (userStatusInfo.attentionScore >= 0.8f && userStatusInfo.drowsinessIntensity <= 0.1f) {
+            // 높은 집중도: 표준 캘리브레이션
             recommendedMode = CalibrationModeType.FIVE_POINT;
+            recommendedAccuracy = AccuracyCriteria.DEFAULT;
             confidenceLevel = 85;
             reason = "높은 집중도로 표준 캘리브레이션에 적합";
-        } else {
-            // 보통 집중도: 간단 캘리브레이션 추천
-            recommendedMode = CalibrationModeType.ONE_POINT;
+        } else if (userStatusInfo.attentionScore >= 0.6f && !userStatusInfo.isDrowsy) {
+            // 보통 집중도: 기본 캘리브레이션
+            recommendedMode = CalibrationModeType.DEFAULT;
+            recommendedAccuracy = AccuracyCriteria.DEFAULT;
             confidenceLevel = 70;
-            reason = "보통 집중도로 간단 캘리브레이션 권장";
+            reason = "보통 집중도로 기본 캘리브레이션 권장";
+        } else {
+            // 낮은 집중도: 간단 캘리브레이션
+            recommendedMode = CalibrationModeType.ONE_POINT;
+            recommendedAccuracy = AccuracyCriteria.LOW;
+            confidenceLevel = 60;
+            reason = "낮은 집중도로 간단 캘리브레이션 권장";
         }
 
         // 관찰 지속성에 따른 신뢰도 보정
-        float consistencyBonus = Math.min(0.1f, optimalConditionCount / 10.0f);
+        float consistencyBonus = Math.min(0.15f, optimalConditionCount / 10.0f);
         confidenceLevel = Math.min(100, Math.round(confidenceLevel * (1.0f + consistencyBonus)));
 
-        return new CalibrationRecommendation(recommendedMode, confidenceLevel, reason);
+        return new CalibrationRecommendation(recommendedMode, recommendedAccuracy, confidenceLevel, reason);
     }
 
     /**
-     * 🆕 캘리브레이션 완료 후 품질 평가
+     * 🆕 캘리브레이션 완료 후 품질 평가 (실제 데이터 기반)
      */
-    public CalibrationQuality evaluateCalibrationQuality(SimulatedUserStatus preCalibrationStatus,
-                                                         SimulatedUserStatus postCalibrationStatus,
+    public CalibrationQuality evaluateCalibrationQuality(UserStatusInfo preCalibrationStatus,
+                                                         UserStatusInfo postCalibrationStatus,
                                                          boolean calibrationSuccess) {
         if (!enabled) {
-            return new CalibrationQuality(50, false, "적응형 평가 비활성화됨");
+            return new CalibrationQuality(50, false, "적응형 평가 비활성화됨", AccuracyCriteria.DEFAULT);
         }
 
         int qualityScore = 50; // 기본 점수
         boolean needsRecalibration = false;
         String assessment;
+        AccuracyCriteria suggestedAccuracy = AccuracyCriteria.DEFAULT;
 
         if (!calibrationSuccess) {
             qualityScore = 20;
             needsRecalibration = true;
             assessment = "캘리브레이션 실패 - 재시도 필요";
+            suggestedAccuracy = AccuracyCriteria.LOW;
         } else {
             // 캘리브레이션 전후 상태 비교
             float attentionDrop = preCalibrationStatus.attentionScore - postCalibrationStatus.attentionScore;
@@ -331,25 +302,31 @@ public class AdaptiveCalibrationManager {
 
             // 집중도 유지 평가
             if (attentionDrop <= 0.1f) {
-                qualityScore += 20; // 집중도 잘 유지됨
+                qualityScore += 25; // 집중도 잘 유지됨
             } else if (attentionDrop <= 0.2f) {
-                qualityScore += 10; // 약간의 집중도 감소
+                qualityScore += 15; // 약간의 집중도 감소
             } else {
                 qualityScore -= 10; // 집중도 크게 감소
             }
 
             // 피로도 증가 평가
             if (drowsinessIncrease <= 0.1f) {
-                qualityScore += 15; // 피로도 증가 최소
+                qualityScore += 20; // 피로도 증가 최소
             } else if (drowsinessIncrease <= 0.2f) {
-                qualityScore += 5; // 적당한 피로도 증가
+                qualityScore += 10; // 적당한 피로도 증가
             } else {
                 qualityScore -= 15; // 과도한 피로도 증가
             }
 
             // 캘리브레이션 타이밍 평가
             if (preCalibrationStatus.attentionScore >= 0.8f) {
-                qualityScore += 10; // 좋은 타이밍에 수행됨
+                qualityScore += 15; // 좋은 타이밍에 수행됨
+            }
+
+            // 졸음 상태 체크
+            if (postCalibrationStatus.isDrowsy) {
+                qualityScore -= 20;
+                needsRecalibration = true;
             }
 
             // 점수 범위 제한
@@ -357,6 +334,13 @@ public class AdaptiveCalibrationManager {
 
             // 재캘리브레이션 필요성 판단
             needsRecalibration = qualityScore < 60 || postCalibrationStatus.drowsinessIntensity > 0.3f;
+
+            // 정확도 추천
+            if (qualityScore >= 80 && postCalibrationStatus.attentionScore >= 0.8f) {
+                suggestedAccuracy = AccuracyCriteria.HIGH;
+            } else if (qualityScore < 50 || postCalibrationStatus.isDrowsy) {
+                suggestedAccuracy = AccuracyCriteria.LOW;
+            }
 
             // 평가 메시지 생성
             if (qualityScore >= 80) {
@@ -372,10 +356,11 @@ public class AdaptiveCalibrationManager {
             }
         }
 
-        Log.d(TAG, String.format("캘리브레이션 품질 평가: %d점, 재시도 필요: %s",
-                qualityScore, needsRecalibration ? "예" : "아니오"));
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            String.format("캘리브레이션 품질 평가: %d점, 재시도 필요: %s, 권장 정확도: %s",
+                qualityScore, needsRecalibration ? "예" : "아니오", suggestedAccuracy));
 
-        return new CalibrationQuality(qualityScore, needsRecalibration, assessment);
+        return new CalibrationQuality(qualityScore, needsRecalibration, assessment, suggestedAccuracy);
     }
 
     /**
@@ -387,51 +372,59 @@ public class AdaptiveCalibrationManager {
         }
 
         if (attentionLevel >= 90 && alertnessLevel >= 90) {
-            return "매우 집중된 상태 - 정밀 캘리브레이션 최적";
+            return "매우 집중된 상태 - 고정밀도 캘리브레이션 최적";
         } else if (attentionLevel >= 80 && alertnessLevel >= 80) {
-            return "집중된 상태 - 캘리브레이션 적합";
+            return "집중된 상태 - 표준 캘리브레이션 적합";
         } else if (attentionLevel >= 60 && alertnessLevel >= 60) {
-            return "보통 상태 - 간단 캘리브레이션 가능";
+            return "보통 상태 - 기본 캘리브레이션 가능";
         } else {
-            return "집중도 부족 - 잠시 후 재시도 권장";
+            return "집중도 부족 - 간단 캘리브레이션 또는 휴식 권장";
         }
     }
 
     /**
      * 🆕 통계 데이터 업데이트
      */
-    private void updateStatistics(SimulatedUserStatus userStatus) {
+    private void updateStatistics(UserStatusInfo userStatusInfo) {
         totalObservationCount++;
 
         // 이동 평균으로 평균 집중도 계산
         float alpha = 0.1f; // 학습률
-        averageAttentionScore = averageAttentionScore * (1 - alpha) + userStatus.attentionScore * alpha;
+        averageAttentionScore = averageAttentionScore * (1 - alpha) + userStatusInfo.attentionScore * alpha;
+    }
+
+    /**
+     * 🧹 관찰 상태 리셋
+     */
+    private void resetObservation() {
+        isObserving = false;
+        observationStartTime = 0;
+        optimalConditionCount = 0;
     }
 
     // 설정 메서드들
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-        Log.d(TAG, "적응형 캘리브레이션 " + (enabled ? "활성화" : "비활성화"));
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            "적응형 캘리브레이션 " + (enabled ? "활성화" : "비활성화"));
     }
 
     public void setAttentionThreshold(float threshold) {
         this.attentionThreshold = Math.max(0.5f, Math.min(1.0f, threshold));
-        Log.d(TAG, "집중도 임계값 설정: " + this.attentionThreshold);
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            "집중도 임계값 설정: " + this.attentionThreshold);
     }
 
     public void setDrowsinessThreshold(float threshold) {
         this.drowsinessThreshold = Math.max(0.0f, Math.min(0.5f, threshold));
-        Log.d(TAG, "졸음 임계값 설정: " + this.drowsinessThreshold);
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            "졸음 임계값 설정: " + this.drowsinessThreshold);
     }
 
     public void setMinimumObservationTime(int timeMs) {
         this.minimumObservationTime = Math.max(5000, timeMs); // 최소 5초
-        Log.d(TAG, "최소 관찰 시간 설정: " + this.minimumObservationTime + "ms");
-    }
-
-    public void setSimulationMode(boolean simulationMode) {
-        this.simulationMode = simulationMode;
-        Log.d(TAG, "시뮬레이션 모드 " + (simulationMode ? "활성화" : "비활성화"));
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            "최소 관찰 시간 설정: " + this.minimumObservationTime + "ms");
     }
 
     // 상태 조회 메서드들
@@ -440,39 +433,40 @@ public class AdaptiveCalibrationManager {
     public float getDrowsinessThreshold() { return drowsinessThreshold; }
     public float getAverageAttentionScore() { return averageAttentionScore; }
     public int getTotalObservationCount() { return totalObservationCount; }
-    public SimulatedUserStatus getLastUserStatus() { return lastUserStatus; }
-    public boolean isSimulationMode() { return simulationMode; }
+    public UserStatusInfo getLastUserStatusInfo() { return lastUserStatusInfo; }
+    public boolean isObserving() { return isObserving; }
 
     /**
-     * 🆕 사용자 상태 기반 권장 설정 제공 (SDK 호환 버전)
+     * 🆕 사용자 상태 기반 권장 설정 제공 (실제 데이터 기반)
      */
-    public UserSettings.Builder getRecommendedSettings(SimulatedUserStatus userStatus) {
+    public UserSettings.Builder getRecommendedSettings(UserStatusInfo userStatusInfo) {
         UserSettings.Builder builder = new UserSettings.Builder();
 
-        if (userStatus == null) {
+        if (userStatusInfo == null) {
             return builder; // 기본 설정 반환
         }
 
         // 집중도에 따른 캘리브레이션 전략 추천
-        if (userStatus.attentionScore >= 0.9f) {
+        if (userStatusInfo.attentionScore >= 0.9f) {
             builder.calibrationStrategy(UserSettings.CalibrationStrategy.PRECISION);
-        } else if (userStatus.attentionScore >= 0.7f) {
+        } else if (userStatusInfo.attentionScore >= 0.7f) {
             builder.calibrationStrategy(UserSettings.CalibrationStrategy.BALANCED);
         } else {
             builder.calibrationStrategy(UserSettings.CalibrationStrategy.QUICK_START);
         }
 
         // 피로도에 따른 성능 모드 추천
-        if (userStatus.drowsinessIntensity > 0.2f || userStatus.isDrowsy) {
+        if (userStatusInfo.drowsinessIntensity > 0.2f || userStatusInfo.isDrowsy) {
             builder.performanceMode(UserSettings.PerformanceMode.POWER_SAVING);
-        } else if (userStatus.attentionScore >= 0.8f) {
+        } else if (userStatusInfo.attentionScore >= 0.8f) {
             builder.performanceMode(UserSettings.PerformanceMode.PERFORMANCE);
         } else {
             builder.performanceMode(UserSettings.PerformanceMode.BALANCED);
         }
 
-        Log.d(TAG, String.format("권장 설정 생성: 집중도 %.2f, 졸음 %.2f",
-                userStatus.attentionScore, userStatus.drowsinessIntensity));
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            String.format("권장 설정 생성: 집중도 %.2f, 졸음 %.2f",
+                userStatusInfo.attentionScore, userStatusInfo.drowsinessIntensity));
 
         return builder;
     }
@@ -481,28 +475,40 @@ public class AdaptiveCalibrationManager {
      * 🆕 디버그 정보 출력
      */
     public String getDebugInfo() {
-        if (lastUserStatus == null) {
+        if (lastUserStatusInfo == null) {
             return "사용자 상태 데이터 없음";
         }
 
         return String.format(
                 "적응형 캘리브레이션 상태:\n" +
                         "- 활성화: %s\n" +
-                        "- 시뮬레이션 모드: %s\n" +
                         "- 관찰 중: %s\n" +
                         "- 평균 집중도: %.2f\n" +
                         "- 총 관찰 횟수: %d\n" +
                         "- 마지막 집중도: %.2f\n" +
                         "- 마지막 졸음 정도: %.2f\n" +
-                        "- 최적 조건 횟수: %d",
+                        "- 졸림 상태: %s\n" +
+                        "- 최적 조건 횟수: %d\n" +
+                        "- 마지막 분석 시간: %d초 전",
                 enabled ? "예" : "아니오",
-                simulationMode ? "예" : "아니오",
                 isObserving ? "예" : "아니오",
                 averageAttentionScore,
                 totalObservationCount,
-                lastUserStatus.attentionScore,
-                lastUserStatus.drowsinessIntensity,
-                optimalConditionCount
+                lastUserStatusInfo.attentionScore,
+                lastUserStatusInfo.drowsinessIntensity,
+                lastUserStatusInfo.isDrowsy ? "예" : "아니오",
+                optimalConditionCount,
+                (System.currentTimeMillis() - lastAnalysisTime) / 1000
         );
+    }
+
+    /**
+     * 🧹 리소스 정리
+     */
+    public void cleanup() {
+        callback = null;
+        resetObservation();
+        PerformanceLogger.logImportant(AppConstants.Logging.TAG_CALIBRATION, 
+            "AdaptiveCalibrationManager 정리 완료");
     }
 }

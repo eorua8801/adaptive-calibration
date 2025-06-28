@@ -54,4 +54,9 @@ public interface EyeTrackingRepository {
      * GazeTracker 인스턴스 반환
      */
     GazeTracker getTracker();
+
+    /**
+     * 🔧 리소스 정리 및 GazeTracker 해제
+     */
+    void cleanup();
 }

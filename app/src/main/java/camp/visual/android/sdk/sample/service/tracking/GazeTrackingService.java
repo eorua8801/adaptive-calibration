@@ -39,6 +39,8 @@ import camp.visual.android.sdk.sample.ui.views.CalibrationViewer;
 import camp.visual.android.sdk.sample.ui.views.OverlayCursorView;
 import camp.visual.android.sdk.sample.ui.views.overlay.EdgeMenuManager;
 import camp.visual.eyedid.gazetracker.callback.CalibrationCallback;
+
+import java.lang.ref.WeakReference;
 import camp.visual.eyedid.gazetracker.callback.TrackingCallback;
 import camp.visual.eyedid.gazetracker.constant.CalibrationModeType;
 import camp.visual.eyedid.gazetracker.metrics.BlinkInfo;
@@ -88,13 +90,13 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     // 🆕 엣지 메뉴 매니저
     private EdgeMenuManager edgeMenuManager;
 
-    // 서비스 인스턴스
-    private static GazeTrackingService instance;
+    // 🔄 서비스 인스턴스 (WeakReference로 메모리 누수 방지)
+    private static WeakReference<GazeTrackingService> instanceRef;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        instance = this;
+        instanceRef = new WeakReference<>(this);
 
         initRepositories();
         initDetectors();
@@ -645,10 +647,28 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     };
 
     private void showCalibrationPointView(final float x, final float y) {
-        Log.d(TAG, "캘리브레이션 포인트: (" + x + ", " + y + ")");
+        Log.d(TAG, "캘리브레이션 포인트 원본: (" + x + ", " + y + ")");
 
-        float adjustedX = x;
-        float adjustedY = y;
+        // 🎯 화면 크기 정보 가져오기
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        float screenWidth = dm.widthPixels;
+        float screenHeight = dm.heightPixels;
+        
+        // 🎯 안전 마진 설정 (화면 가장자리에서 최소 거리)
+        float marginX = screenWidth * 0.08f;  // 화면 너비의 8% (약 80-100px)
+        float marginY = screenHeight * 0.08f; // 화면 높이의 8%
+        
+        // 🎯 캘리브레이션 포인트를 안전 영역 내로 조정
+        float adjustedX = Math.max(marginX, Math.min(x, screenWidth - marginX));
+        float adjustedY = Math.max(marginY, Math.min(y, screenHeight - marginY));
+        
+        // 📊 조정 결과 로깅
+        if (adjustedX != x || adjustedY != y) {
+            Log.d(TAG, String.format("캘리브레이션 포인트 조정: (%.0f, %.0f) → (%.0f, %.0f)", 
+                    x, y, adjustedX, adjustedY));
+        } else {
+            Log.d(TAG, "캘리브레이션 포인트: 조정 불필요 (이미 안전 영역 내)");
+        }
 
         skipProgress = true;
         calibrationViewer.setPointAnimationPower(0);
@@ -698,7 +718,7 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
     }
 
     public static GazeTrackingService getInstance() {
-        return instance;
+        return instanceRef != null ? instanceRef.get() : null;
     }
 
     // 🆕 수동 커서 오프셋 리셋 메서드 (설정 화면에서 호출 가능)
@@ -835,9 +855,9 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
             }
         }
 
-        // 시선 추적 중지
-        if (trackingRepository != null && trackingRepository.getTracker() != null) {
-            trackingRepository.stopTracking();
+        // 🔧 개선: 시선 추적 리소스 완전 정리
+        if (trackingRepository != null) {
+            trackingRepository.cleanup(); // 🔴 CRITICAL: GazeTracker.releaseGazeTracker() 호출
         }
 
         // 🆕 핸들러 정리
@@ -850,7 +870,11 @@ public class GazeTrackingService extends Service implements PerformanceMonitor.P
             edgeMenuManager.cleanup();
         }
 
-        instance = null;
+        // 🧹 WeakReference 정리
+        if (instanceRef != null) {
+            instanceRef.clear();
+            instanceRef = null;
+        }
     }
 
     @Nullable

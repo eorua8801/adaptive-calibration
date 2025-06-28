@@ -32,11 +32,11 @@ public class EnhancedOneEuroFilterManager {
     private final float beta;
     private final float dCutoff;
 
-    // 안경 보정 설정
+    // 시선 안정화 설정 (수정된 설명)
     private boolean glassesCompensationEnabled = true;
-    private float refractionCorrectionFactor = 0.1f; // 사용자별 조정 가능
+    private float refractionCorrectionFactor = 0.15f; // gaze-fixation 블렌딩 비율 (기본 15%)
     private int consecutiveLowConfidenceCount = 0;
-    private static final int LOW_CONFIDENCE_THRESHOLD = 3;
+    private static final int LOW_CONFIDENCE_THRESHOLD = 2; // 더 빠른 반응 (기존 3 → 2)
 
     // 필터 성능 모니터링
     private long lastFilterTime = 0;
@@ -57,15 +57,15 @@ public class EnhancedOneEuroFilterManager {
         // 🆕 기본 gaze 필터
         gazeFilter = new OneEuroFilterManager(2, freq, minCutoff, beta, dCutoff);
 
-        // 🆕 fixation 데이터용 필터 (더 부드러운 설정)
-        fixationFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.7f, beta * 0.8f, dCutoff);
+        // 🆕 fixation 데이터용 필터 (더 부드러운 설정 - 개선됨)
+        fixationFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.6f, beta * 0.7f, dCutoff);
 
-        // 🆕 TrackingState별 동적 필터
-        // 정상 상태: 반응성 중심
-        normalFilter = new OneEuroFilterManager(2, freq, minCutoff * 1.2f, beta * 0.8f, dCutoff);
+        // 🆕 TrackingState별 동적 필터 (부드러움 중심으로 개선)
+        // 정상 상태: 부드러움과 반응성 균형
+        normalFilter = new OneEuroFilterManager(2, freq, minCutoff, beta * 0.9f, dCutoff);
 
-        // 저신뢰도 상태: 안정성 중심
-        confidenceFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.5f, beta * 1.5f, dCutoff);
+        // 저신뢰도 상태: 안정성 극대화
+        confidenceFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.4f, beta * 0.6f, dCutoff);
 
         // 기본적으로 정상 필터 사용
         activeFilter = normalFilter;
@@ -140,18 +140,26 @@ public class EnhancedOneEuroFilterManager {
     }
 
     /**
-     * 🆕 안경 착용자를 위한 굴절 보정 알고리즘
+     * 🆕 시선 안정화를 위한 가중평균 알고리즘 (수정된 설명)
+     * gaze(실시간, 흔들림)와 fixation(평균화, 안정)을 적절히 블렌딩
      */
     private PointF applyGlassesCorrection(float gazeX, float gazeY, float fixationX, float fixationY) {
-        // fixation과 gaze 간의 차이 계산
+        // gaze와 fixation 간의 차이 계산 (흔들림 정도)
         float deltaX = fixationX - gazeX;
         float deltaY = fixationY - gazeY;
 
-        // 굴절 보정 적용
-        float correctedX = gazeX + deltaX * refractionCorrectionFactor;
-        float correctedY = gazeY + deltaY * refractionCorrectionFactor;
-
-        return new PointF(correctedX, correctedY);
+        // 흔들림 정도에 따른 적응형 안정화
+        // 흔들림이 클수록 fixation 비율 증가 (안정성 강화)
+        float jitterLevel = (float) Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        float adaptiveBlending = refractionCorrectionFactor * (1.0f + Math.min(jitterLevel / 100f, 0.3f));
+        
+        // 부드러운 안정화 (급격한 변화 방지)
+        float smoothingFactor = 0.8f; // 전체적인 블렌딩 강도 조절
+        float stabilizedX = gazeX + deltaX * adaptiveBlending * smoothingFactor;
+        float stabilizedY = gazeY + deltaY * adaptiveBlending * smoothingFactor;
+        
+        // 결과: gaze(반응성) + fixation(안정성)의 최적 블렌드
+        return new PointF(stabilizedX, stabilizedY);
     }
 
     /**
@@ -173,12 +181,12 @@ public class EnhancedOneEuroFilterManager {
     // 🆕 설정 메서드들
     public void setGlassesCompensationEnabled(boolean enabled) {
         glassesCompensationEnabled = enabled;
-        Log.d(TAG, "안경 보정 " + (enabled ? "활성화" : "비활성화"));
+        Log.d(TAG, "시선 안정화 " + (enabled ? "활성화" : "비활성화"));
     }
 
     public void setRefractionCorrectionFactor(float factor) {
         refractionCorrectionFactor = Math.max(0f, Math.min(1f, factor)); // 0~1 범위로 제한
-        Log.d(TAG, "굴절 보정 계수 설정: " + refractionCorrectionFactor);
+        Log.d(TAG, "gaze-fixation 블렌딩 비율 설정: " + refractionCorrectionFactor);
     }
 
     public boolean isGlassesCompensationEnabled() {
@@ -191,15 +199,15 @@ public class EnhancedOneEuroFilterManager {
 
     // 🆕 필터 상태 정보
     public String getCurrentFilterInfo() {
-        return currentFilterType + " (안경보정: " + (glassesCompensationEnabled ? "ON" : "OFF") + ")";
+        return currentFilterType + " (시선안정화: " + (glassesCompensationEnabled ? "ON" : "OFF") + ")";
     }
 
     public void reset() {
         // 🔧 수정: 기존 파라미터로 새 필터 생성
         gazeFilter = new OneEuroFilterManager(2, freq, minCutoff, beta, dCutoff);
-        fixationFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.7f, beta * 0.8f, dCutoff);
-        normalFilter = new OneEuroFilterManager(2, freq, minCutoff * 1.2f, beta * 0.8f, dCutoff);
-        confidenceFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.5f, beta * 1.5f, dCutoff);
+        fixationFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.6f, beta * 0.7f, dCutoff);
+        normalFilter = new OneEuroFilterManager(2, freq, minCutoff, beta * 0.9f, dCutoff);
+        confidenceFilter = new OneEuroFilterManager(2, freq, minCutoff * 0.4f, beta * 0.6f, dCutoff);
 
         activeFilter = normalFilter;
         consecutiveLowConfidenceCount = 0;

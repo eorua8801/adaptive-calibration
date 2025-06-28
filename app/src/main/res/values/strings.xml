@@ -1,3 +1,28 @@
 <resources>
   <string name="app_name">EyedidSampleApp</string>
+  
+  <!-- 권한 관련 설명 문구 -->
+  <string name="permission_accessibility_title">접근성 서비스 권한 필요</string>
+  <string name="permission_accessibility_message">시선 추적으로 화면을 조작하려면 접근성 서비스 권한이 필요합니다.\n\n이 권한으로 다음이 가능해집니다:\n• 👁️ 시선으로 클릭하기\n• 📱 시선으로 스크롤하기\n• 🖱️ 시선으로 스와이프하기\n\n❗ 중요: 이 앱은 시선 추적 목적으로만 접근성 서비스를 사용하며, 개인정보를 수집하지 않습니다.</string>
+  <string name="permission_overlay_title">화면 위에 그리기 권한 필요</string>
+  <string name="permission_overlay_message">시선 커서와 캘리브레이션 화면을 표시하려면 화면 위에 그리기 권한이 필요합니다.</string>
+  <string name="permission_camera_title">카메라 권한 필요</string>
+  <string name="permission_camera_message">시선 추적을 위해 전면 카메라 접근 권한이 필요합니다.</string>
+  
+  <!-- 버튼 텍스트 -->
+  <string name="btn_grant_permission">권한 설정하러 가기</string>
+  <string name="btn_cancel">취소</string>
+  <string name="btn_continue">계속</string>
+  
+  <!-- 상태 메시지 -->
+  <string name="status_initializing">시스템 초기화 중...</string>
+  <string name="status_permission_checking">권한 확인 중...</string>
+  <string name="status_permission_completed">모든 권한 설정 완료 ✅</string>
+  <string name="status_permission_failed">권한 설정 실패 ❌</string>
+  <string name="status_gaze_initialized">시선 추적 초기화됨 ✅</string>
+  <string name="status_initialization_failed">초기화 실패 ❌</string>
+  
+  <!-- 에러 메시지 -->
+  <string name="error_license_key">라이센스 키 오류가 발생했습니다.\n\n개발자에게 문의하세요.</string>
+  <string name="error_gaze_tracker_init">시선 추적 시스템 초기화에 실패했습니다.\n\n다음을 확인해주세요:\n• 전면 카메라가 가려지지 않았는지\n• 충분한 조명이 있는지\n• 다른 카메라 앱이 실행 중이지 않은지</string>
 </resources>

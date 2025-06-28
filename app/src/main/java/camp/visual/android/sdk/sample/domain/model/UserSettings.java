@@ -183,13 +183,13 @@ public class UserSettings {
         private OneEuroFilterPreset oneEuroFilterPreset = OneEuroFilterPreset.BALANCED_STABILITY;
         private ClickTiming clickTiming = ClickTiming.NORMAL;
 
-        // 🆕 1단계 개선 관련 기본값들
+        // 🆕 1단계 개선 관련 기본값들 (개선됨)
         private boolean performanceOptimizationEnabled = true; // 기본적으로 활성화
         private PerformanceMode performanceMode = PerformanceMode.BALANCED; // 균형 모드가 기본
         private boolean glassesCompensationEnabled = true; // 안경 보정 기본 활성화
-        private float refractionCorrectionFactor = 0.1f; // 보통 강도
+        private float refractionCorrectionFactor = 0.15f; // 개선된 보정 강도 (기존 0.1f → 0.15f)
         private boolean dynamicFilteringEnabled = true; // 동적 필터링 기본 활성화
-        private int targetFPS = 30; // 기본 30 FPS
+        private int targetFPS = 25; // 부드러움 중심으로 조정 (기존 30 → 25)
 
         // 기존 빌더 메서드들
         public Builder calibrationStrategy(CalibrationStrategy val) { calibrationStrategy = val; return this; }
