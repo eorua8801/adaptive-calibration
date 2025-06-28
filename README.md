@@ -171,7 +171,7 @@ PerformanceMonitor.lowBatteryThreshold = 20; // 20% 이하시 절전 모드
 adb logcat | grep "Performance\|Memory"
 ```
 
-> 📄 **상세한 기술 문서**: [TECHNICAL.md](./TECHNICAL.md)에서 전체 구현 세부사항 확인
+> 📄 **상세한 기술 문서**: [docs/TECHNICAL.md](./docs/TECHNICAL.md)에서 전체 구현 세부사항 확인
 
 ---
 
@@ -333,7 +333,7 @@ correctedGaze = gazeData + (fixationData - gazeData) × fusionRatio
 ## 📋 **기술 문서 및 추가 자료**
 
 ### 📁 **상세 문서**
-- 📄 [기술 상세 문서](TECHNICAL.md) - 구현 세부사항 및 아키텍처
+- 📄 [기술 상세 문서][docs/TECHNICAL.md](./docs/TECHNICAL.md) - 구현 세부사항 및 아키텍처
 - ⚙️ [설치 가이드](SETUP.md) - 설치 및 설정 방법  
 - 🎥 [데모 영상](demo/) - 실제 작동 모습
 - 📊 [성능 리포트](performance/) - 테스트 결과 및 분석
